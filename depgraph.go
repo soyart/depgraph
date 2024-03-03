@@ -184,12 +184,12 @@ func (g *Graph) RemoveAutoRemove(target string) {
 	queue := []string{target}
 
 	for len(queue) != 0 {
-		current, q := popQueue(queue)
+		current := popQueue(&queue)
 		for dependent := range g.dependents[current] {
 			removeFromDepMap(g.dependents, current, dependent)
 			removeFromDepMap(g.dependencies, dependent, current)
 
-			q = append(q, dependent)
+			queue = append(queue, dependent)
 		}
 
 		for dependency := range g.dependencies[current] {
@@ -205,13 +205,11 @@ func (g *Graph) RemoveAutoRemove(target string) {
 			// If so, we can safely remove this dependency from the graph
 			_, ok = siblings[current]
 			if len(siblings) == 1 && ok {
-				q = append(q, dependency)
+				queue = append(queue, dependency)
 			}
 		}
 
 		delete(g.nodes, current)
-
-		queue = q
 	}
 }
 
@@ -220,12 +218,12 @@ func (g *Graph) RemoveForce(target string) {
 	queue := []string{target}
 
 	for len(queue) != 0 {
-		current, q := popQueue(queue)
+		current := popQueue(&queue)
 		for dependent := range g.dependents[current] {
 			removeFromDepMap(g.dependents, current, dependent)
 			removeFromDepMap(g.dependencies, dependent, current)
 
-			q = append(q, dependent)
+			queue = append(queue, dependent)
 		}
 
 		for dependency := range g.dependencies[current] {
@@ -239,8 +237,6 @@ func (g *Graph) RemoveForce(target string) {
 		}
 
 		delete(g.nodes, current)
-
-		queue = q
 	}
 }
 
@@ -336,12 +332,24 @@ func removeFromDepMap(deps DepMap, key, node string) {
 	delete(nodes, node)
 }
 
-func popQueue[T any](stack []T) (T, []T) {
+func popQueue[T any](p *[]T) T {
 	var t T
-	l := len(stack)
-	if l == 0 {
-		return t, nil
+	if p == nil {
+		return t
 	}
 
-	return stack[0], stack[1:l]
+	queue := *p
+	l := len(queue)
+	if l == 0 {
+		return t
+	}
+
+	item := queue[0]
+	if l == 1 {
+		*p = []T{}
+		return item
+	}
+
+	*p = queue[1:]
+	return item
 }
