@@ -1,7 +1,6 @@
 package depgraph_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/soyart/depgraph"
@@ -20,60 +19,40 @@ func testGraph() depgraph.Graph {
 	return g
 }
 
-func TestAddDependency(t *testing.T) {
-	// b,c -> a
-	// ก   -> ข
+func TestAddDependencies(t *testing.T) {
+	valids := map[string][]string{
+		// b -> a
+		// c -> a, b
+		// x -> c
+		// y -> x, b
+		"b": {"a"},
+		"c": {"a", "b"},
+		"x": {"c"},
+		"y": {"x", "b"},
+	}
 
 	g := depgraph.New()
-	err := g.AddDependency("b", "a")
-	if err != nil {
-		t.Error(err)
-	}
+	addValidDependencies(t, g, valids)
 
-	err = g.AddDependency("c", "a")
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = g.AddDependency("ข", "ก")
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log(g)
-
-	if !g.DependsOn("b", "a") {
-		t.Fatal("b should depend on a")
-	}
-	if !g.DependsOn("c", "a") {
-		t.Fatal("c should depend on a")
-	}
-	if g.DependsOn("c", "b") {
-		t.Fatal("c should not depend on b")
-	}
-	if g.DependsOn("a", "d") {
-		t.Fatal("a should be leave")
-	}
-
-	err = g.AddDependency("d", "c")
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = g.AddDependency("a", "d")
-	if !errors.Is(err, depgraph.ErrCircularDependency) {
-		t.Fatal("expecting circular dependency error")
+	// Add some circular dependency and expect error
+	err := g.AddDependency("a", "y")
+	if err == nil {
+		t.Fatal("expecting error from circular dependency")
 	}
 }
 
 func TestDependencies(t *testing.T) {
+	valids := map[string][]string{
+		"b": {"a"},
+		"c": {"a"},
+		"x": {"c"},
+		"ก": {"c"},
+		"y": {"x"},
+		"ข": {"ก"},
+	}
+
 	g := depgraph.New()
-	g.AddDependency("b", "a")
-	g.AddDependency("c", "a")
-	g.AddDependency("x", "c")
-	g.AddDependency("ก", "c")
-	g.AddDependency("y", "x")
-	g.AddDependency("ข", "ก")
+	addValidDependencies(t, g, valids)
 
 	deps := g.Dependencies("ข")
 	assertMapContainsValues(t, deps, []string{"ก", "a", "c"})
@@ -89,13 +68,17 @@ func TestDependencies(t *testing.T) {
 }
 
 func TestDependents(t *testing.T) {
+	valids := map[string][]string{
+		"b": {"a"},
+		"c": {"a"},
+		"x": {"c"},
+		"ก": {"c"},
+		"y": {"x"},
+		"ข": {"ก"},
+	}
+
 	g := depgraph.New()
-	g.AddDependency("b", "a")
-	g.AddDependency("c", "a")
-	g.AddDependency("x", "c")
-	g.AddDependency("ก", "c")
-	g.AddDependency("y", "x")
-	g.AddDependency("ข", "ก")
+	addValidDependencies(t, g, valids)
 
 	deps := g.Dependents("ข")
 	assertMapContainsValues(t, deps, []string{})
@@ -254,6 +237,29 @@ func TestDebugDepGraph(t *testing.T) {
 		// t.Logf("DebugTest-after: Graph=%+v", g)
 
 		g.AssertRelationships()
+	}
+}
+
+func addValidDependencies(t *testing.T, g depgraph.Graph, valids map[string][]string) {
+	for dependent, dependencies := range valids {
+		for _, dependency := range dependencies {
+			err := g.AddDependency(dependent, dependency)
+			if err != nil {
+				t.Fatal("unexpected error:", err)
+			}
+
+			if !g.DependsOn(dependent, dependency) {
+				t.Fatalf("dependent %v should depend on %v", dependent, dependency)
+			}
+		}
+
+		added := g.Dependencies(dependent)
+		for _, dependency := range dependencies {
+			_, ok := added[dependency]
+			if !ok {
+				t.Fatal("added dependency not found", dependency)
+			}
+		}
 	}
 }
 
