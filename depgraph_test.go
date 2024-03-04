@@ -13,7 +13,7 @@ func testGraph() depgraph.Graph {
 	g.AddDependency("c", "a")
 	g.AddDependency("d", "c")
 
-	g.AddDependency("x", "y")
+	g.AddDependency("y", "x")
 
 	g.AddDependency("ข", "ก")
 
@@ -111,6 +111,41 @@ func TestDependents(t *testing.T) {
 
 	deps = g.Dependents("c")
 	assertContainsAll(t, deps, []string{"x", "y", "ก", "ข"})
+}
+
+func TestRemove(t *testing.T) {
+	g := testGraph()
+	var err error
+
+	err = g.Remove("y")
+	if err != nil {
+		t.Log("after-remove", "y", g)
+		t.Fatal("unexpected error:", err)
+	}
+
+	err = g.Remove("x")
+	if err != nil {
+		t.Log("after-remove", "x", g)
+		t.Fatal("unexpected error:", err)
+	}
+
+	err = g.Remove("ข")
+	if err != nil {
+		t.Log("after-remove", "ข", g)
+		t.Fatal("unexpected error:", err)
+	}
+
+	err = g.Remove("ก")
+	if err != nil {
+		t.Log("after-remove", "ก", g)
+		t.Fatal("unexpected error:", err)
+	}
+
+	err = g.Remove("a")
+	if err == nil {
+		t.Log("after-remove", "a", g)
+		t.Fatal("expecting error from removing a")
+	}
 }
 
 func TestAutoRemove(t *testing.T) {

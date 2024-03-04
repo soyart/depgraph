@@ -18,8 +18,8 @@ type (
 
 type Graph struct {
 	nodes        NodeSet // All nodes in a set
-	dependencies DepMap  // child  -> []parent
 	dependents   DepMap  // parent -> []child
+	dependencies DepMap  // child  -> []parent
 }
 
 func New() Graph {
@@ -242,13 +242,15 @@ func (g *Graph) RemoveForce(target string) {
 
 // Remove removes target with 0 dependents.
 // Otherwise it returns ErrDependentExists.
-func (g *Graph) Remove(leaf string) error {
-	_, ok := g.dependents[leaf]
-	if !ok {
+func (g *Graph) Remove(target string) error {
+	dependents, ok := g.dependents[target]
+	fmt.Println("dependents", dependents, "ok", ok)
+
+	if ok || len(dependents) != 0 {
 		return ErrDependentExists
 	}
 
-	g.Delete(leaf)
+	g.Delete(target)
 
 	return nil
 }
