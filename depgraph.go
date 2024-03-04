@@ -30,9 +30,33 @@ func New[T comparable]() Graph[T] {
 	}
 }
 
-func (g *Graph[T]) GraphNodes() NodeSet[T]       { return copyMap(g.nodes) }
-func (g *Graph[T]) GraphDependencies() DepMap[T] { return copyMap(g.dependencies) }
-func (g *Graph[T]) GraphDependents() DepMap[T]   { return copyMap(g.dependents) }
+func (s NodeSet[T]) Contains(item T) bool {
+	_, ok := s[item]
+
+	return ok
+}
+
+func (d DepMap[T]) ContainsKey(key T) bool {
+	_, ok := d[key]
+
+	return ok
+}
+
+func (d DepMap[T]) Contains(key, item T) bool {
+	_, ok := d[key][item]
+
+	return ok
+}
+
+func (g *Graph[T]) Contains(node T) bool {
+	_, ok := g.nodes[node]
+
+	return ok
+}
+
+func (g *Graph[T]) GraphNodes() NodeSet[T]       { return copyMap(g.nodes) }        // Returns a copy of all nodes
+func (g *Graph[T]) GraphDependents() DepMap[T]   { return copyMap(g.dependents) }   // Returns a copy of dependent map
+func (g *Graph[T]) GraphDependencies() DepMap[T] { return copyMap(g.dependencies) } // Returns a copy of dependency map
 
 func (g *Graph[T]) Clone() Graph[T] {
 	return Graph[T]{
@@ -40,12 +64,6 @@ func (g *Graph[T]) Clone() Graph[T] {
 		dependencies: copyMap(g.dependencies),
 		dependents:   copyMap(g.dependents),
 	}
-}
-
-func (g *Graph[T]) Contains(node T) bool {
-	_, ok := g.nodes[node]
-
-	return ok
 }
 
 // AddDependency establishes the dependency relationship between 2 nodes.
@@ -71,19 +89,13 @@ func (g *Graph[T]) AddDependency(dependent, dependency T) error {
 
 // DependsOn checks if all deep dependencies of dependent contain dependency
 func (g *Graph[T]) DependsOn(dependent, dependency T) bool {
-	depcyDepcies := g.Dependencies(dependent)
-	_, ok := depcyDepcies[dependency]
-
-	return ok
+	return g.Dependencies(dependent).Contains(dependency)
 }
 
 // DependsOnDirectly returns a boolean indicating
 // if dependency is a direct dependency of dependent.
 func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
-	deps := g.dependencies[dependent]
-	_, ok := deps[dependency]
-
-	return ok
+	return g.dependencies.Contains(dependent, dependency)
 }
 
 // Leaves returns leave nodes,
@@ -91,7 +103,7 @@ func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 func (g *Graph[T]) Leaves() []T {
 	var leaves []T
 	for node := range g.nodes {
-		if _, ok := g.dependencies[node]; !ok {
+		if !g.dependencies.ContainsKey(node) {
 			leaves = append(leaves, node)
 		}
 	}
@@ -117,10 +129,12 @@ func (g *Graph[T]) Dependencies(node T) NodeSet[T] {
 			}
 
 			for dep := range deps {
-				if _, ok := dependencies[dep]; !ok {
-					dependencies[dep] = struct{}{}
-					discovered = append(discovered, dep)
+				if dependencies.Contains(dep) {
+					continue
 				}
+
+				dependencies[dep] = struct{}{}
+				discovered = append(discovered, dep)
 			}
 		}
 
@@ -148,10 +162,12 @@ func (g *Graph[T]) Dependents(node T) NodeSet[T] {
 			}
 
 			for dep := range deps {
-				if _, ok := dependents[dep]; !ok {
-					dependents[dep] = struct{}{}
-					discovered = append(discovered, dep)
+				if dependents.Contains(dep) {
+					continue
 				}
+
+				dependents[dep] = struct{}{}
+				discovered = append(discovered, dep)
 			}
 		}
 
@@ -248,8 +264,7 @@ func (g *Graph[T]) RemoveForce(target T) {
 // Remove removes target with 0 dependents.
 // Otherwise it returns ErrDependentExists.
 func (g *Graph[T]) Remove(target T) error {
-	_, ok := g.dependents[target]
-	if ok {
+	if g.dependents.ContainsKey(target) {
 		return ErrDependentExists
 	}
 
@@ -280,31 +295,31 @@ func (g *Graph[T]) Delete(node T) {
 // AssertRelationship asserts that every node has valid references in all fields.
 // Panics if invalid references are ofund.
 func (g *Graph[T]) AssertRelationships() {
-	for parent := range g.dependents {
-		_, ok := g.nodes[parent]
-		if !ok {
-			panic(fmt.Sprintf("dangling dependency: %v", parent))
+	for dependency := range g.dependents {
+		if !g.nodes.Contains(dependency) {
+			panic(fmt.Sprintf("dangling dependency: %v", dependency))
 		}
 
-		for child := range g.dependents[parent] {
-			_, ok = g.nodes[child]
-			if !ok {
-				panic(fmt.Sprintf("dangling dependents for parent %v: child: %v", parent, child))
+		for child := range g.dependents[dependency] {
+			if g.nodes.Contains(child) {
+				continue
 			}
+
+			panic(fmt.Sprintf("dangling dependents for parent %v: child: %v", dependency, child))
 		}
 	}
 
-	for child := range g.dependencies {
-		_, ok := g.nodes[child]
-		if !ok {
-			panic(fmt.Sprintf("dangling dependents: %v", child))
+	for dependent := range g.dependencies {
+		if !g.nodes.Contains(dependent) {
+			panic(fmt.Sprintf("dangling dependents: %v", dependent))
 		}
 
-		for parent := range g.dependencies[child] {
-			_, ok = g.nodes[parent]
-			if !ok {
-				panic(fmt.Sprintf("dangling child %v parent: %v", child, parent))
+		for parent := range g.dependencies[dependent] {
+			if g.nodes.Contains(parent) {
+				continue
 			}
+
+			panic(fmt.Sprintf("dangling child %v parent: %v", dependent, parent))
 		}
 	}
 }
