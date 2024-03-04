@@ -43,6 +43,7 @@ func (d DepMap[T]) ContainsKey(key T) bool {
 }
 
 func (d DepMap[T]) Contains(key, item T) bool {
+	// Note: reading from nil maps will not panic
 	_, ok := d[key][item]
 
 	return ok

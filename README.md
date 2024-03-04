@@ -24,8 +24,8 @@ graph with lower memory footprint.
     // New graph with string nodes
     g := depgraph.New[string]()
 
-    // Nodes b and a is initialized as it's inserted
-    _ = g.AddDependency("b", "a")
+    _ = g.AddDependency("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
+    _ = g.AddDependency("c", "b") // Node c gets initialized to depend on node b
   }
   ```
 
@@ -37,13 +37,12 @@ graph with lower memory footprint.
   func foo() {
     var err error
 
-    // New graph with string nodes
     g := depgraph.New[string]()
-    _ = g.AddDependency("b", "a")
-    _ = g.AddDependency("c", "b")
-    _ = g.AddDependency("d", "c")
+    err = g.AddDependency("b", "a") // ok: b -> a
+    err = g.AddDependency("c", "b") // ok: c -> b
+    err = g.AddDependency("d", "c") // ok: d -> c
 
-    err = g.AddDependency("a", "d") // error! circular dependency!
+    err = g.AddDependency("a", "d") // error! circular dependency! a -> d -> c -> b -> a
   }
   ```
 
@@ -59,15 +58,13 @@ graph with lower memory footprint.
     func foo() {
       var err error
 
-      // New graph with string nodes
       g := depgraph.New[string]()
+      err = g.AddDependency("b", "a")
+      err = g.AddDependency("c", "b")
+      err = g.AddDependency("d", "c")
 
-      _ = g.AddDependency("b", "a")
-      _ = g.AddDependency("c", "b")
-      _ = g.AddDependency("d", "c")
-
-      _ = g.Remove("d") // ok
-      _ = g.Remove("c") // ok
+      err = g.Remove("d") // ok: d has 0 dependents
+      err = g.Remove("c") // ok: c now has 0 dependents (d was just removed)
 
       err = g.Remove("a") // error! 'a' still has dependent 'b'
     }
@@ -79,9 +76,6 @@ graph with lower memory footprint.
 
     ```go
     func foo() {
-      var err error
-
-      // New graph with string nodes
       g := depgraph.New[string]()
 
       _ = g.AddDependency("b", "a")
@@ -100,9 +94,6 @@ graph with lower memory footprint.
 
     ```go
     func foo() {
-      var err error
-
-      // New graph with string nodes
       g := depgraph.New[string]()
 
       _ = g.AddDependency("b", "a")
@@ -122,9 +113,6 @@ graph with lower memory footprint.
 
   ```go
   func foo() {
-    var err error
-
-    // New graph with string nodes
     g := depgraph.New[string]()
 
     _ = g.AddDependency("b", "a")

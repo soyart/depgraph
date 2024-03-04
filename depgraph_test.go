@@ -22,6 +22,12 @@ func initTestGraph(t *testing.T) depgraph.Graph[string] {
 	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
 
+	{
+		// Test if nil maps crash depgraph
+		_ = g.DependsOn("0", "1")
+		_ = g.Contains("2")
+	}
+
 	return g
 }
 
