@@ -69,6 +69,7 @@ func (g *Graph[T]) AddDependency(dependent, dependency T) error {
 	return nil
 }
 
+// DependsOn checks if all deep dependencies of dependent contain dependency
 func (g *Graph[T]) DependsOn(dependent, dependency T) bool {
 	depcyDepcies := g.Dependencies(dependent)
 	_, ok := depcyDepcies[dependency]
@@ -76,6 +77,8 @@ func (g *Graph[T]) DependsOn(dependent, dependency T) bool {
 	return ok
 }
 
+// DependsOnDirectly returns a boolean indicating
+// if dependency is a direct dependency of dependent.
 func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 	deps := g.dependencies[dependent]
 	_, ok := deps[dependency]
@@ -83,6 +86,8 @@ func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 	return ok
 }
 
+// Leaves returns leave nodes,
+// i.e. nodes that do not depend on any other nodes.
 func (g *Graph[T]) Leaves() []T {
 	var leaves []T
 	for node := range g.nodes {
@@ -272,8 +277,9 @@ func (g *Graph[T]) Delete(node T) {
 	delete(g.nodes, node)
 }
 
+// AssertRelationship asserts that every node has valid references in all fields.
+// Panics if invalid references are ofund.
 func (g *Graph[T]) AssertRelationships() {
-	// Asserts that every node has valid references in all fields
 	for parent := range g.dependents {
 		_, ok := g.nodes[parent]
 		if !ok {
