@@ -78,8 +78,8 @@ func (g *Graph[T]) AddDependency(dependent, dependency T) error {
 		return ErrCircularDependency
 	}
 
-	addToMap(g.dependents, dependency, dependent)
-	addToMap(g.dependencies, dependent, dependency)
+	addToDepMap(g.dependents, dependency, dependent)
+	addToDepMap(g.dependencies, dependent, dependency)
 
 	g.nodes[dependency] = struct{}{}
 	g.nodes[dependent] = struct{}{}
@@ -328,7 +328,7 @@ func (g *Graph[T]) AssertRelationships() {
 	}
 }
 
-func addToMap[T comparable](m DepMap[T], key, node T) {
+func addToDepMap[T comparable](m DepMap[T], key, node T) {
 	set := m[key]
 	if set == nil {
 		set = make(NodeSet[T])

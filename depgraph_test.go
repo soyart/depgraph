@@ -6,15 +6,21 @@ import (
 	"github.com/soyart/depgraph"
 )
 
-func testGraph() depgraph.Graph[string] {
+func initTestGraph(t *testing.T) depgraph.Graph[string] {
+	valids := map[string][]string{
+		// b -> a
+		// c -> a, b
+		// x -> c
+		// y -> x, b
+		"b": {"a"},
+		"c": {"a"},
+		"d": {"c"},
+		"y": {"x"},
+		"ข": {"ก"},
+	}
+
 	g := depgraph.New[string]()
-	g.AddDependency("b", "a")
-	g.AddDependency("c", "a")
-	g.AddDependency("d", "c")
-
-	g.AddDependency("y", "x")
-
-	g.AddDependency("ข", "ก")
+	addValidDependencies(t, g, valids)
 
 	return g
 }
@@ -97,7 +103,7 @@ func TestDependents(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	g := testGraph()
+	g := initTestGraph(t)
 	var err error
 
 	err = g.Remove("y")
@@ -136,7 +142,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestRemoveForce(t *testing.T) {
-	g := testGraph()
+	g := initTestGraph(t)
 
 	// This should remove a, b, c, d,
 	// leaving only x, y, ก, ข
@@ -171,7 +177,7 @@ func TestRemoveAutoRemove(t *testing.T) {
 
 	for i := range tests {
 		testCase := &tests[i]
-		g := testGraph()
+		g := initTestGraph(t)
 		testAutoRemove(t, g, testCase.removes)
 
 		if testCase.willBeEmpty {
@@ -185,7 +191,7 @@ func TestRemoveAutoRemove(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	g := testGraph()
+	g := initTestGraph(t)
 
 	for _, node := range []string{"y", "a", "x", "c"} {
 		g.Delete(node)
@@ -194,7 +200,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestAutoRemoveLeaves(t *testing.T) {
-	testAutoRemoveLeaves(t, testGraph())
+	testAutoRemoveLeaves(t, initTestGraph(t))
 }
 
 func testAutoRemove(t *testing.T, g depgraph.Graph[string], toRemoves []string) {
@@ -217,7 +223,7 @@ func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph[string]) {
 }
 
 func TestDebugDepGraph(t *testing.T) {
-	g := testGraph()
+	g := initTestGraph(t)
 	t.Log("DebugTest: Leaves=", g.Leaves())
 	t.Logf("DebugTest: Graph=%+v", g)
 
@@ -310,35 +316,30 @@ func assertNotContains(t *testing.T, g depgraph.Graph[string], nodes []string) {
 	}
 
 	graphNodes := g.GraphNodes()
-	dependencies := g.GraphDependencies()
-	dependents := g.GraphDependents()
+	graphDependents := g.GraphDependents()
+	graphDependencies := g.GraphDependencies()
 
 	for _, node := range nodes {
-		_, ok := graphNodes[node]
-		if ok {
+		if graphNodes.Contains(node) {
 			t.Fatal("found node", node)
 		}
 
-		_, ok = dependencies[node]
-		if ok {
+		if graphDependencies.ContainsKey(node) {
 			t.Fatal("found node as dependent", node)
 		}
 
-		_, ok = dependents[node]
-		if ok {
+		if graphDependents.ContainsKey(node) {
 			t.Fatal("found node as dependency", node)
 		}
 
-		for _, v := range dependencies {
-			_, ok = v[node]
-			if ok {
+		for _, v := range graphDependencies {
+			if v.Contains(node) {
 				t.Fatal("found node as dependency", node)
 			}
 		}
 
-		for _, v := range dependents {
-			_, ok = v[node]
-			if ok {
+		for _, v := range graphDependents {
+			if v.Contains(node) {
 				t.Fatal("found node as dependent", node)
 			}
 		}
@@ -351,24 +352,21 @@ func assertContainsAll(t *testing.T, g depgraph.Graph[string], nodes []string) {
 	}
 
 	graphNodes := g.GraphNodes()
-	dependencies := g.GraphDependencies()
-	dependents := g.GraphDependents()
+	graphDependents := g.GraphDependents()
+	graphDependencies := g.GraphDependencies()
 
 	for _, node := range nodes {
-		var found bool
-
-		_, ok := graphNodes[node]
-		if !ok {
+		if !graphNodes.Contains(node) {
 			t.Fatal("found node", node)
 		}
 
-		_, ok = dependencies[node]
-		if ok {
+		var found bool
+
+		if graphDependencies.ContainsKey(node) {
 			found = true
 		}
 
-		_, ok = dependents[node]
-		if ok {
+		if graphDependents.ContainsKey(node) {
 			found = true
 		}
 
@@ -384,37 +382,43 @@ func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes []string)
 	}
 
 	graphNodes := g.GraphNodes()
-	dependents := g.GraphDependents()
-	dependencies := g.GraphDependencies()
+	graphDependents := g.GraphDependents()
+	graphDependencies := g.GraphDependencies()
 
 	for _, node := range nodes {
-		var found bool
-		_, ok := graphNodes[node]
-		if !ok {
+		if !graphNodes.Contains(node) {
 			t.Fatalf("missing node %v", node)
 		}
 
-		_, ok = dependents[node]
-		if ok {
-			found = true
-		} else {
-			for _, children := range dependents {
-				_, ok := children[node]
-				if ok {
-					found = true
+		found := graphDependents.ContainsKey(node)
+		if !found {
+			for dependency, dependents := range graphDependents {
+				if !dependents.Contains(node) {
+					continue
 				}
+
+				if !graphDependencies.Contains(node, dependency) {
+					continue
+				}
+
+				found = true
+				break
 			}
 		}
 
-		_, ok = dependencies[node]
-		if ok {
-			found = true
-		} else {
-			for _, parents := range dependencies {
-				_, ok := parents[node]
-				if ok {
-					found = true
+		found = graphDependencies.ContainsKey(node)
+		if !found {
+			for dependent, dependencies := range graphDependencies {
+				if !dependencies.Contains(node) {
+					continue
 				}
+
+				if !graphDependents.Contains(node, dependent) {
+					continue
+				}
+
+				found = true
+				break
 			}
 		}
 
