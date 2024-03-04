@@ -6,8 +6,8 @@ import (
 	"github.com/soyart/depgraph"
 )
 
-func testGraph() depgraph.Graph {
-	g := depgraph.New()
+func testGraph() depgraph.Graph[string] {
+	g := depgraph.New[string]()
 	g.AddDependency("b", "a")
 	g.AddDependency("c", "a")
 	g.AddDependency("d", "c")
@@ -31,7 +31,7 @@ func TestAddDependencies(t *testing.T) {
 		"y": {"x", "b"},
 	}
 
-	g := depgraph.New()
+	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
 
 	// Add some circular dependency and expect error
@@ -51,7 +51,7 @@ func TestDependencies(t *testing.T) {
 		"ข": {"ก"},
 	}
 
-	g := depgraph.New()
+	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
 
 	deps := g.Dependencies("ข")
@@ -77,7 +77,7 @@ func TestDependents(t *testing.T) {
 		"ข": {"ก"},
 	}
 
-	g := depgraph.New()
+	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
 
 	deps := g.Dependents("ข")
@@ -197,7 +197,7 @@ func TestAutoRemoveLeaves(t *testing.T) {
 	testAutoRemoveLeaves(t, testGraph())
 }
 
-func testAutoRemove(t *testing.T, g depgraph.Graph, toRemoves []string) {
+func testAutoRemove(t *testing.T, g depgraph.Graph[string], toRemoves []string) {
 	t.Log("testAutoRemove-before", g, "removes", toRemoves)
 	for _, rm := range toRemoves {
 		g.RemoveAutoRemove(rm)
@@ -207,7 +207,7 @@ func testAutoRemove(t *testing.T, g depgraph.Graph, toRemoves []string) {
 	t.Log("testAutoRemove-after", g)
 }
 
-func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph) {
+func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph[string]) {
 	for _, leaf := range g.Leaves() {
 		g.RemoveAutoRemove(leaf)
 	}
@@ -240,7 +240,7 @@ func TestDebugDepGraph(t *testing.T) {
 	}
 }
 
-func addValidDependencies(t *testing.T, g depgraph.Graph, valids map[string][]string) {
+func addValidDependencies(t *testing.T, g depgraph.Graph[string], valids map[string][]string) {
 	for dependent, dependencies := range valids {
 		for _, dependency := range dependencies {
 			err := g.AddDependency(dependent, dependency)
@@ -276,7 +276,7 @@ func assertMapContainsValues[K comparable, V any](
 	}
 }
 
-func assertEmptyGraph(t *testing.T, g depgraph.Graph) {
+func assertEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
 	if len(g.GraphNodes()) != 0 {
 		t.Fatalf("graph not empty after all leaves removed: nodes=%v", g.GraphNodes())
 	}
@@ -290,7 +290,7 @@ func assertEmptyGraph(t *testing.T, g depgraph.Graph) {
 	}
 }
 
-func assertNotEmptyGraph(t *testing.T, g depgraph.Graph) {
+func assertNotEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
 	if len(g.GraphNodes()) == 0 {
 		t.Fatalf("graph not empty after all leaves removed: nodes=%v", g.GraphNodes())
 	}
@@ -304,7 +304,7 @@ func assertNotEmptyGraph(t *testing.T, g depgraph.Graph) {
 	}
 }
 
-func assertNotContains(t *testing.T, g depgraph.Graph, nodes []string) {
+func assertNotContains(t *testing.T, g depgraph.Graph[string], nodes []string) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
@@ -345,7 +345,7 @@ func assertNotContains(t *testing.T, g depgraph.Graph, nodes []string) {
 	}
 }
 
-func assertContainsAll(t *testing.T, g depgraph.Graph, nodes []string) {
+func assertContainsAll(t *testing.T, g depgraph.Graph[string], nodes []string) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
@@ -378,7 +378,7 @@ func assertContainsAll(t *testing.T, g depgraph.Graph, nodes []string) {
 	}
 }
 
-func assertRemainingNode(t *testing.T, g depgraph.Graph, nodes []string) {
+func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes []string) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
