@@ -243,10 +243,8 @@ func (g *Graph) RemoveForce(target string) {
 // Remove removes target with 0 dependents.
 // Otherwise it returns ErrDependentExists.
 func (g *Graph) Remove(target string) error {
-	dependents, ok := g.dependents[target]
-	fmt.Println("dependents", dependents, "ok", ok)
-
-	if ok || len(dependents) != 0 {
+	_, ok := g.dependents[target]
+	if ok {
 		return ErrDependentExists
 	}
 

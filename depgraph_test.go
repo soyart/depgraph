@@ -76,16 +76,16 @@ func TestDependencies(t *testing.T) {
 	g.AddDependency("ข", "ก")
 
 	deps := g.Dependencies("ข")
-	assertContainsAll(t, deps, []string{"ก", "a", "c"})
+	assertMapContainsValues(t, deps, []string{"ก", "a", "c"})
 
 	deps = g.Dependencies("c")
-	assertContainsAll(t, deps, []string{"a"})
+	assertMapContainsValues(t, deps, []string{"a"})
 
 	deps = g.Dependencies("x")
-	assertContainsAll(t, deps, []string{"a", "c"})
+	assertMapContainsValues(t, deps, []string{"a", "c"})
 
 	deps = g.Dependencies("y")
-	assertContainsAll(t, deps, []string{"a", "c", "x"})
+	assertMapContainsValues(t, deps, []string{"a", "c", "x"})
 }
 
 func TestDependents(t *testing.T) {
@@ -98,19 +98,19 @@ func TestDependents(t *testing.T) {
 	g.AddDependency("ข", "ก")
 
 	deps := g.Dependents("ข")
-	assertContainsAll(t, deps, []string{})
+	assertMapContainsValues(t, deps, []string{})
 
 	deps = g.Dependents("b")
-	assertContainsAll(t, deps, []string{})
+	assertMapContainsValues(t, deps, []string{})
 
 	deps = g.Dependents("x")
-	assertContainsAll(t, deps, []string{"y"})
+	assertMapContainsValues(t, deps, []string{"y"})
 
 	deps = g.Dependents("a")
-	assertContainsAll(t, deps, []string{"b", "c", "x", "y", "ก", "ข"})
+	assertMapContainsValues(t, deps, []string{"b", "c", "x", "y", "ก", "ข"})
 
 	deps = g.Dependents("c")
-	assertContainsAll(t, deps, []string{"x", "y", "ก", "ข"})
+	assertMapContainsValues(t, deps, []string{"x", "y", "ก", "ข"})
 }
 
 func TestRemove(t *testing.T) {
@@ -118,24 +118,28 @@ func TestRemove(t *testing.T) {
 	var err error
 
 	err = g.Remove("y")
+	assertNotContains(t, g, []string{"y"})
 	if err != nil {
 		t.Log("after-remove", "y", g)
 		t.Fatal("unexpected error:", err)
 	}
 
 	err = g.Remove("x")
+	assertNotContains(t, g, []string{"x"})
 	if err != nil {
 		t.Log("after-remove", "x", g)
 		t.Fatal("unexpected error:", err)
 	}
 
 	err = g.Remove("ข")
+	assertNotContains(t, g, []string{"ข"})
 	if err != nil {
 		t.Log("after-remove", "ข", g)
 		t.Fatal("unexpected error:", err)
 	}
 
 	err = g.Remove("ก")
+	assertNotContains(t, g, []string{"ก"})
 	if err != nil {
 		t.Log("after-remove", "ก", g)
 		t.Fatal("unexpected error:", err)
@@ -148,7 +152,17 @@ func TestRemove(t *testing.T) {
 	}
 }
 
-func TestAutoRemove(t *testing.T) {
+func TestRemoveForce(t *testing.T) {
+	g := testGraph()
+
+	// This should remove a, b, c, d,
+	// leaving only x, y, ก, ข
+	g.RemoveForce("a")
+	assertNotContains(t, g, []string{"a", "b", "c", "d"})
+	assertContainsAll(t, g, []string{"x", "y", "ก", "ข"})
+}
+
+func TestRemoveAutoRemove(t *testing.T) {
 	type testCaseDefaultGraphs struct {
 		removes        []string
 		nodesRemaining []string
@@ -184,6 +198,15 @@ func TestAutoRemove(t *testing.T) {
 
 		assertNotEmptyGraph(t, g)
 		assertRemainingNode(t, g, testCase.nodesRemaining)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	g := testGraph()
+
+	for _, node := range []string{"y", "a", "x", "c"} {
+		g.Delete(node)
+		assertNotContains(t, g, []string{node})
 	}
 }
 
@@ -234,8 +257,12 @@ func TestDebugDepGraph(t *testing.T) {
 	}
 }
 
-func assertContainsAll[K comparable, V any](t *testing.T, m map[K]V, things []K) {
-	for _, thing := range things {
+func assertMapContainsValues[K comparable, V any](
+	t *testing.T,
+	m map[K]V,
+	keys []K,
+) {
+	for _, thing := range keys {
 		_, ok := m[thing]
 		if !ok {
 			t.Fatalf("thing %v is not in map", thing)
@@ -271,23 +298,101 @@ func assertNotEmptyGraph(t *testing.T, g depgraph.Graph) {
 	}
 }
 
+func assertNotContains(t *testing.T, g depgraph.Graph, nodes []string) {
+	if len(nodes) == 0 {
+		t.Fatal("remainingNodes is null")
+	}
+
+	graphNodes := g.GraphNodes()
+	dependencies := g.GraphDependencies()
+	dependents := g.GraphDependents()
+
+	for _, node := range nodes {
+		_, ok := graphNodes[node]
+		if ok {
+			t.Fatal("found node", node)
+		}
+
+		_, ok = dependencies[node]
+		if ok {
+			t.Fatal("found node as dependent", node)
+		}
+
+		_, ok = dependents[node]
+		if ok {
+			t.Fatal("found node as dependency", node)
+		}
+
+		for _, v := range dependencies {
+			_, ok = v[node]
+			if ok {
+				t.Fatal("found node as dependency", node)
+			}
+		}
+
+		for _, v := range dependents {
+			_, ok = v[node]
+			if ok {
+				t.Fatal("found node as dependent", node)
+			}
+		}
+	}
+}
+
+func assertContainsAll(t *testing.T, g depgraph.Graph, nodes []string) {
+	if len(nodes) == 0 {
+		t.Fatal("remainingNodes is null")
+	}
+
+	graphNodes := g.GraphNodes()
+	dependencies := g.GraphDependencies()
+	dependents := g.GraphDependents()
+
+	for _, node := range nodes {
+		var found bool
+
+		_, ok := graphNodes[node]
+		if !ok {
+			t.Fatal("found node", node)
+		}
+
+		_, ok = dependencies[node]
+		if ok {
+			found = true
+		}
+
+		_, ok = dependents[node]
+		if ok {
+			found = true
+		}
+
+		if !found {
+			t.Fatal("node not found", node)
+		}
+	}
+}
+
 func assertRemainingNode(t *testing.T, g depgraph.Graph, nodes []string) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
 
+	graphNodes := g.GraphNodes()
+	dependents := g.GraphDependents()
+	dependencies := g.GraphDependencies()
+
 	for _, node := range nodes {
 		var found bool
-		_, ok := g.GraphNodes()[node]
+		_, ok := graphNodes[node]
 		if !ok {
 			t.Fatalf("missing node %v", node)
 		}
 
-		_, ok = g.GraphDependents()[node]
+		_, ok = dependents[node]
 		if ok {
 			found = true
 		} else {
-			for _, children := range g.GraphDependents() {
+			for _, children := range dependents {
 				_, ok := children[node]
 				if ok {
 					found = true
@@ -295,11 +400,11 @@ func assertRemainingNode(t *testing.T, g depgraph.Graph, nodes []string) {
 			}
 		}
 
-		_, ok = g.GraphDependencies()[node]
+		_, ok = dependencies[node]
 		if ok {
 			found = true
 		} else {
-			for _, parents := range g.GraphDependencies() {
+			for _, parents := range dependencies {
 				_, ok := parents[node]
 				if ok {
 					found = true
