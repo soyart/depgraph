@@ -102,6 +102,7 @@ func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 // i.e. nodes that do not depend on any other nodes.
 func (g *Graph[T]) Leaves() []T {
 	var leaves []T
+
 	for node := range g.nodes {
 		if !g.dependencies.ContainsKey(node) {
 			leaves = append(leaves, node)
@@ -122,6 +123,7 @@ func (g *Graph[T]) Dependencies(node T) NodeSet[T] {
 
 	for len(searchNext) != 0 {
 		var discovered []T
+
 		for _, next := range searchNext {
 			deps, ok := g.dependencies[next]
 			if !ok {
@@ -206,6 +208,7 @@ func (g *Graph[T]) RemoveAutoRemove(target T) {
 
 	for len(queue) != 0 {
 		current := popQueue(&queue)
+
 		for dependent := range g.dependents[current] {
 			removeFromDepMap(g.dependents, current, dependent)
 			removeFromDepMap(g.dependencies, dependent, current)
@@ -240,6 +243,7 @@ func (g *Graph[T]) RemoveForce(target T) {
 
 	for len(queue) != 0 {
 		current := popQueue(&queue)
+
 		for dependent := range g.dependents[current] {
 			removeFromDepMap(g.dependents, current, dependent)
 			removeFromDepMap(g.dependencies, dependent, current)
@@ -280,12 +284,14 @@ func (g *Graph[T]) Delete(node T) {
 	for dependent := range g.dependents[node] {
 		removeFromDepMap(g.dependencies, dependent, node)
 	}
+
 	delete(g.dependents, node)
 
 	// Delete all edges to dependencies
 	for dependency := range g.dependencies[node] {
 		removeFromDepMap(g.dependents, dependency, node)
 	}
+
 	delete(g.dependencies, node)
 
 	// Delete node from nodes
