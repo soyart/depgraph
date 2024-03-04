@@ -144,7 +144,7 @@ func (g *Graph[T]) Dependencies(node T) NodeSet[T] {
 	return dependencies
 }
 
-// Dependencies returns all deep dependencts
+// Dependencies returns all deep dependencies
 func (g *Graph[T]) Dependents(node T) NodeSet[T] {
 	if _, found := g.nodes[node]; !found {
 		return nil
@@ -293,19 +293,21 @@ func (g *Graph[T]) Delete(node T) {
 }
 
 // AssertRelationship asserts that every node has valid references in all fields.
-// Panics if invalid references are ofund.
+// Panics if invalid references are found.
 func (g *Graph[T]) AssertRelationships() {
 	for dependency := range g.dependents {
 		if !g.nodes.Contains(dependency) {
 			panic(fmt.Sprintf("dangling dependency: %v", dependency))
 		}
 
-		for child := range g.dependents[dependency] {
-			if g.nodes.Contains(child) {
-				continue
+		for dependent := range g.dependents[dependency] {
+			if !g.nodes.Contains(dependent) {
+				panic(fmt.Sprintf("dangling dependents for parent %v: child: %v", dependency, dependent))
 			}
 
-			panic(fmt.Sprintf("dangling dependents for parent %v: child: %v", dependency, child))
+			if !g.dependencies.Contains(dependent, dependency) {
+				panic(fmt.Sprintf("dangling dependents for parent %v: child: %v", dependency, dependent))
+			}
 		}
 	}
 
@@ -314,12 +316,14 @@ func (g *Graph[T]) AssertRelationships() {
 			panic(fmt.Sprintf("dangling dependents: %v", dependent))
 		}
 
-		for parent := range g.dependencies[dependent] {
-			if g.nodes.Contains(parent) {
-				continue
+		for dependency := range g.dependencies[dependent] {
+			if !g.nodes.Contains(dependency) {
+				panic(fmt.Sprintf("dangling child %v parent: %v", dependent, dependency))
 			}
 
-			panic(fmt.Sprintf("dangling child %v parent: %v", dependent, parent))
+			if !g.dependents.Contains(dependency, dependent) {
+				panic(fmt.Sprintf("dangling child %v parent: %v", dependent, dependency))
+			}
 		}
 	}
 }
