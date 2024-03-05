@@ -67,9 +67,9 @@ func (g *Graph[T]) Clone() Graph[T] {
 	}
 }
 
-// AddDependency establishes the dependency relationship between 2 nodes.
+// Depend establishes the dependency relationship between 2 nodes.
 // It errs if a node depends on itself, or if circular dependency is found.
-func (g *Graph[T]) AddDependency(dependent, dependency T) error {
+func (g *Graph[T]) Depend(dependent, dependency T) error {
 	if dependent == dependency {
 		return ErrDependsOnSelf
 	}
@@ -86,6 +86,13 @@ func (g *Graph[T]) AddDependency(dependent, dependency T) error {
 	g.nodes[dependent] = struct{}{}
 
 	return nil
+}
+
+// Undepends remove dependent->dependency edges in the graph,
+// but not from the nodes, transforming dependent into a leaf.
+func (g *Graph[T]) Undepend(dependent, dependency T) {
+	removeFromDepMap(g.dependents, dependency, dependent)
+	removeFromDepMap(g.dependencies, dependent, dependency)
 }
 
 // DependsOn checks if all deep dependencies of dependent contain dependency
@@ -213,9 +220,7 @@ func (g *Graph[T]) RemoveAutoRemove(target T) {
 		current := popQueue(&queue)
 
 		for dependent := range g.dependents[current] {
-			removeFromDepMap(g.dependents, current, dependent)
-			removeFromDepMap(g.dependencies, dependent, current)
-
+			g.Undepend(dependent, current)
 			queue = append(queue, dependent)
 		}
 
@@ -225,8 +230,7 @@ func (g *Graph[T]) RemoveAutoRemove(target T) {
 				panic("bug")
 			}
 
-			removeFromDepMap(g.dependents, dependency, current)
-			removeFromDepMap(g.dependencies, current, dependency)
+			g.Undepend(current, dependency)
 
 			// Check if current is the only dependent node on this dependency
 			// If so, we can safely remove this dependency from the graph
@@ -248,8 +252,7 @@ func (g *Graph[T]) RemoveForce(target T) {
 		current := popQueue(&queue)
 
 		for dependent := range g.dependents[current] {
-			removeFromDepMap(g.dependents, current, dependent)
-			removeFromDepMap(g.dependencies, dependent, current)
+			g.Undepend(dependent, current)
 
 			queue = append(queue, dependent)
 		}
@@ -260,8 +263,7 @@ func (g *Graph[T]) RemoveForce(target T) {
 				panic("bug")
 			}
 
-			removeFromDepMap(g.dependents, dependency, current)
-			removeFromDepMap(g.dependencies, current, dependency)
+			g.Undepend(current, dependency)
 		}
 
 		delete(g.nodes, current)
@@ -282,23 +284,23 @@ func (g *Graph[T]) Remove(target T) error {
 
 // Delete removes a node and all of its references
 // without checking for or handling dangling references
-func (g *Graph[T]) Delete(node T) {
-	// Delete all edges to dependents
-	for dependent := range g.dependents[node] {
-		removeFromDepMap(g.dependencies, dependent, node)
-	}
-
-	delete(g.dependents, node)
-
+func (g *Graph[T]) Delete(target T) {
 	// Delete all edges to dependencies
-	for dependency := range g.dependencies[node] {
-		removeFromDepMap(g.dependents, dependency, node)
+	for dependency := range g.dependencies[target] {
+		removeFromDepMap(g.dependents, dependency, target)
 	}
 
-	delete(g.dependencies, node)
+	delete(g.dependencies, target)
+
+	// Delete all edges to dependents
+	for dependent := range g.dependents[target] {
+		removeFromDepMap(g.dependencies, dependent, target)
+	}
+
+	delete(g.dependents, target)
 
 	// Delete node from nodes
-	delete(g.nodes, node)
+	delete(g.nodes, target)
 }
 
 // AssertRelationship asserts that every node has valid references in all fields.

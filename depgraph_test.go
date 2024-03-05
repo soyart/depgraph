@@ -47,7 +47,7 @@ func TestAddDependencies(t *testing.T) {
 	addValidDependencies(t, g, valids)
 
 	// Add some circular dependency and expect error
-	err := g.AddDependency("a", "y")
+	err := g.Depend("a", "y")
 	if err == nil {
 		t.Fatal("expecting error from circular dependency")
 	}
@@ -255,7 +255,7 @@ func TestDebugDepGraph(t *testing.T) {
 func addValidDependencies(t *testing.T, g depgraph.Graph[string], valids map[string][]string) {
 	for dependent, dependencies := range valids {
 		for _, dependency := range dependencies {
-			err := g.AddDependency(dependent, dependency)
+			err := g.Depend(dependent, dependency)
 			if err != nil {
 				t.Fatal("unexpected error:", err)
 			}

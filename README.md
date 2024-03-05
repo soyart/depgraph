@@ -24,8 +24,8 @@ graph with lower memory footprint.
     // New graph with string nodes
     g := depgraph.New[string]()
 
-    _ = g.AddDependency("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
-    _ = g.AddDependency("c", "b") // Node c gets initialized to depend on node b
+    _ = g.Depend("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
+    _ = g.Depend("c", "b") // Node c gets initialized to depend on node b
   }
   ```
 
@@ -38,11 +38,11 @@ graph with lower memory footprint.
     var err error
 
     g := depgraph.New[string]()
-    err = g.AddDependency("b", "a") // ok: b -> a
-    err = g.AddDependency("c", "b") // ok: c -> b
-    err = g.AddDependency("d", "c") // ok: d -> c
+    err = g.Depend("b", "a") // ok: b -> a
+    err = g.Depend("c", "b") // ok: c -> b
+    err = g.Depend("d", "c") // ok: d -> c
 
-    err = g.AddDependency("a", "d") // error! circular dependency! a -> d -> c -> b -> a
+    err = g.Depend("a", "d") // error! circular dependency! a -> d -> c -> b -> a
   }
   ```
 
@@ -59,9 +59,9 @@ graph with lower memory footprint.
       var err error
 
       g := depgraph.New[string]()
-      err = g.AddDependency("b", "a")
-      err = g.AddDependency("c", "b")
-      err = g.AddDependency("d", "c")
+      err = g.Depend("b", "a")
+      err = g.Depend("c", "b")
+      err = g.Depend("d", "c")
 
       err = g.Remove("d") // ok: d has 0 dependents
       err = g.Remove("c") // ok: c now has 0 dependents (d was just removed)
@@ -78,9 +78,9 @@ graph with lower memory footprint.
     func foo() {
       g := depgraph.New[string]()
 
-      _ = g.AddDependency("b", "a")
-      _ = g.AddDependency("c", "b")
-      _ = g.AddDependency("d", "c")
+      _ = g.Depend("b", "a")
+      _ = g.Depend("c", "b")
+      _ = g.Depend("d", "c")
 
       g.RemoveForce("b") // removes b, c, and d
     }
@@ -96,11 +96,11 @@ graph with lower memory footprint.
     func foo() {
       g := depgraph.New[string]()
 
-      _ = g.AddDependency("b", "a")
-      _ = g.AddDependency("c", "b")
-      _ = g.AddDependency("d", "c")
-      _ = g.AddDependency("x", "b")
-      _ = g.AddDependency("y", "x")
+      _ = g.Depend("b", "a")
+      _ = g.Depend("c", "b")
+      _ = g.Depend("d", "c")
+      _ = g.Depend("x", "b")
+      _ = g.Depend("y", "x")
 
       g.RemoveAutoRemove("y") // removes y and x
     }
@@ -115,12 +115,17 @@ graph with lower memory footprint.
   func foo() {
     g := depgraph.New[string]()
 
-    _ = g.AddDependency("b", "a")
-    _ = g.AddDependency("c", "b")
-    _ = g.AddDependency("d", "c")
+    _ = g.Depend("b", "a")
+    _ = g.Depend("c", "b")
+    _ = g.Depend("d", "c")
+    g.Layers() // [["a"], ["b", "x"], ["c"], ["d"]]
+    
+    _ = g.Depend("x", "0")
+    g.Layers() // [["0", "a"], ["b", "x"], ["c"], ["d"]]
 
-    _ = g.AddDependency("x", "a")
-
-    layers := g.Layers() // [["a"], ["b", "x"], ["c"], ["d"]]
+    // Remove edge x->a, which is b's only dependency,
+    // thus making b independent
+    g.Undepend("x", "a")
+    g.Layers() // [["0", "a", "x"], ["b"], ["c"], ["d"]]
   }
   ```
