@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	ErrCircularDependency = errors.New("circular dependency")
 	ErrDependsOnSelf      = errors.New("node depends on self")
 	ErrDependentExists    = errors.New("dependent exists")
+	ErrCircularDependency = errors.New("circular dependency")
 )
 
 type (
@@ -102,12 +102,14 @@ func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 // Leaves returns leave nodes,
 // i.e. nodes that do not depend on any other nodes.
 func (g *Graph[T]) Leaves() []T {
-	var leaves []T
+	var leaves []T //nolint:prealloc
 
 	for node := range g.nodes {
-		if !g.dependencies.ContainsKey(node) {
-			leaves = append(leaves, node)
+		if g.dependencies.ContainsKey(node) {
+			continue
 		}
+
+		leaves = append(leaves, node)
 	}
 
 	return leaves
@@ -335,6 +337,15 @@ func (g *Graph[T]) AssertRelationships() {
 	}
 }
 
+func copyMap[K comparable, V any](m map[K]V) map[K]V {
+	copied := make(map[K]V)
+	for k, v := range m {
+		copied[k] = v
+	}
+
+	return copied
+}
+
 func addToDepMap[T comparable](m DepMap[T], key, node T) {
 	set := m[key]
 	if set == nil {
@@ -343,15 +354,6 @@ func addToDepMap[T comparable](m DepMap[T], key, node T) {
 	}
 
 	set[node] = struct{}{}
-}
-
-func copyMap[K comparable, V any](m map[K]V) map[K]V {
-	copied := make(map[K]V)
-	for k, v := range m {
-		copied[k] = v
-	}
-
-	return copied
 }
 
 func removeFromDepMap[T comparable](deps DepMap[T], key, node T) {
