@@ -1,6 +1,7 @@
 package depgraph_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/soyart/depgraph"
@@ -106,6 +107,43 @@ func TestDependents(t *testing.T) {
 
 	deps = g.Dependents("c")
 	assertMapContainsValues(t, deps, []string{"x", "y", "ก", "ข"})
+}
+
+func TestUndepend(t *testing.T) {
+	valids := map[string][]string{
+		"b": {"a"},
+		"c": {"a"},
+		"x": {"c"},
+		"y": {"x"},
+		"ข": {"ก"},
+	}
+
+	g := depgraph.New[string]()
+	addValidDependencies(t, g, valids)
+
+	testUndependToLeaf(t, &g, "b", "a")
+	testUndependToLeaf(t, &g, "y", "x")
+}
+
+func testUndependToLeaf(t *testing.T, g *depgraph.Graph[string], dependent, dependency string) {
+	g.Undepend(dependent, dependency)
+	if g.DependsOn(dependent, dependency) {
+		t.Fatalf("%v should not depend on %v after undepend", dependent, dependency)
+	}
+
+	leaves := g.Leaves()
+	found := false
+	for _, leaf := range leaves {
+		if leaf == dependent {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatalf("%v not found in leaf", dependent)
+	}
+
+	t.Log("graph after undepend", dependent, dependency, fmt.Sprintf("%+v", g), "leaves", g.Leaves(), "layers", g.Layers())
 }
 
 func TestRemove(t *testing.T) {

@@ -125,10 +125,5 @@ graph with lower memory footprint.
     
     _ = g.Depend("x", "0")
     g.Layers() // [["0", "a"], ["b", "x"], ["c"], ["d"]]
-
-    // Remove edge x->a, which is x's only dependency,
-    // thus making x independent
-    g.Undepend("x", "a")
-    g.Layers() // [["0", "a", "x"], ["b"], ["c"], ["d"]]
   }
   ```
