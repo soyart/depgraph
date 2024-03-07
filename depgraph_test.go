@@ -133,7 +133,7 @@ func testUndependToLeaf(t *testing.T, g *depgraph.Graph[string], dependent, depe
 
 	leaves := g.Leaves()
 	found := false
-	for _, leaf := range leaves {
+	for leaf := range leaves {
 		if leaf == dependent {
 			found = true
 		}
@@ -258,7 +258,7 @@ func testAutoRemove(t *testing.T, g depgraph.Graph[string], toRemoves []string) 
 }
 
 func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph[string]) {
-	for _, leaf := range g.Leaves() {
+	for leaf := range g.Leaves() {
 		g.RemoveAutoRemove(leaf)
 	}
 

@@ -108,15 +108,15 @@ func (g *Graph[T]) DependsOnDirectly(dependent, dependency T) bool {
 
 // Leaves returns leave nodes,
 // i.e. nodes that do not depend on any other nodes.
-func (g *Graph[T]) Leaves() []T {
-	var leaves []T //nolint:prealloc
+func (g *Graph[T]) Leaves() NodeSet[T] {
+	leaves := make(NodeSet[T])
 
 	for node := range g.nodes {
 		if g.dependencies.ContainsKey(node) {
 			continue
 		}
 
-		leaves = append(leaves, node)
+		leaves[node] = struct{}{}
 	}
 
 	return leaves
@@ -192,8 +192,8 @@ func (g *Graph[T]) Dependents(node T) NodeSet[T] {
 // Layers returns nodes in topological sort order.
 // Nodes in each outer slot only depend on prior slots,
 // i.e. independent nodes come before dependent ones.
-func (g *Graph[T]) Layers() [][]T {
-	var layers [][]T
+func (g *Graph[T]) Layers() []NodeSet[T] {
+	var layers []NodeSet[T]
 	copied := g.Clone()
 	for {
 		leaves := copied.Leaves()
@@ -201,10 +201,10 @@ func (g *Graph[T]) Layers() [][]T {
 			break
 		}
 
-		layers = append(layers, leaves)
+		layers = append(layers, copyMap(leaves))
 
-		for i := range leaves {
-			copied.Delete(leaves[i])
+		for node := range leaves {
+			copied.Delete(node)
 		}
 	}
 
