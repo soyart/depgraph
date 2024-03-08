@@ -164,7 +164,7 @@ func TestLayersSimple(t *testing.T) {
 	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a", "ก"),
 		nodeSet("ข", "b", "c"),
 		nodeSet("x"),
@@ -173,7 +173,7 @@ func TestLayersSimple(t *testing.T) {
 
 	g.Undepend("b", "a")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a", "b", "ก"),
 		nodeSet("ข", "c"),
 		nodeSet("x"),
@@ -182,7 +182,7 @@ func TestLayersSimple(t *testing.T) {
 
 	g.Undepend("c", "a")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a", "b", "c", "ก"),
 		nodeSet("ข", "x"),
 		nodeSet("y"),
@@ -190,7 +190,7 @@ func TestLayersSimple(t *testing.T) {
 
 	g.Depend("a", "c")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("b", "c", "ก"),
 		nodeSet("a", "ข", "x"),
 		nodeSet("y"),
@@ -211,7 +211,7 @@ func TestLayersComplex(t *testing.T) {
 	// x depends on [c, a]
 	g := depgraph.New[string]()
 	addValidDependencies(t, g, valids)
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a"),
 		nodeSet("b", "c"),
 		nodeSet("ก", "x"),
@@ -225,7 +225,7 @@ func TestLayersComplex(t *testing.T) {
 	if !g.DependsOn("x", "c") {
 		t.Fatal("x directly depends on c")
 	}
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a"),
 		nodeSet("b", "c"),
 		nodeSet("ก"),
@@ -239,7 +239,7 @@ func TestLayersComplex(t *testing.T) {
 	if !g.DependsOn("x", "c") {
 		t.Fatal("x directly depends on c")
 	}
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a", "y"),
 		nodeSet("b", "c"),
 		nodeSet("ก"),
@@ -255,7 +255,7 @@ func TestLayersComplex(t *testing.T) {
 		t.Fatal("x directly depends on c")
 	}
 	assertMapContainsValues(t, g.Dependencies("x"), []string{"a", "c"})
-	assertLayers(t, &g, []depgraph.NodeSet[string]{
+	assertLayers(t, &g, []depgraph.Nodes[string]{
 		nodeSet("a", "y"),
 		nodeSet("b", "c"),
 		nodeSet("x", "ก"),
@@ -602,7 +602,7 @@ func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes []string)
 func assertLayers(
 	t *testing.T,
 	g *depgraph.Graph[string],
-	expected []depgraph.NodeSet[string],
+	expected []depgraph.Nodes[string],
 ) {
 	layers := g.Layers()
 	if ll, le := len(layers), len(expected); ll != le {
@@ -616,8 +616,8 @@ func assertLayers(
 	}
 }
 
-func nodeSet(nodes ...string) depgraph.NodeSet[string] {
-	s := make(depgraph.NodeSet[string])
+func nodeSet(nodes ...string) depgraph.Nodes[string] {
+	s := make(depgraph.Nodes[string])
 	for i := range nodes {
 		s[nodes[i]] = struct{}{}
 	}
