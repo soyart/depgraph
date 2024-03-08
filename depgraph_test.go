@@ -2,6 +2,7 @@ package depgraph_test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/soyart/depgraph"
@@ -144,6 +145,110 @@ func testUndependToLeaf(t *testing.T, g *depgraph.Graph[string], dependent, depe
 	}
 
 	t.Log("graph after undepend", dependent, dependency, fmt.Sprintf("%+v", g), "leaves", g.Leaves(), "layers", g.Layers())
+}
+
+func TestLayersSimple(t *testing.T) {
+	valids := map[string][]string{
+		"b": {"a"},
+		"c": {"a"},
+		"x": {"c"},
+		"y": {"x"},
+		"ข": {"ก"},
+	}
+
+	g := depgraph.New[string]()
+	addValidDependencies(t, g, valids)
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a", "ก"),
+		nodeSet("ข", "b", "c"),
+		nodeSet("x"),
+		nodeSet("y"),
+	})
+
+	g.Undepend("b", "a")
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a", "b", "ก"),
+		nodeSet("ข", "c"),
+		nodeSet("x"),
+		nodeSet("y"),
+	})
+
+	g.Undepend("c", "a")
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a", "b", "c", "ก"),
+		nodeSet("ข", "x"),
+		nodeSet("y"),
+	})
+
+	g.Depend("a", "c")
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("b", "c", "ก"),
+		nodeSet("a", "ข", "x"),
+		nodeSet("y"),
+	})
+}
+
+func TestLayersComplex(t *testing.T) {
+	valids := map[string][]string{
+		"b": {"a"},
+		"c": {"a"},
+		"x": {"c"},
+		"y": {"x"},
+		"ก": {"c"},
+		"ข": {"ก"},
+	}
+
+	// x directly depends on c
+	// x depends on [c, a]
+	g := depgraph.New[string]()
+	addValidDependencies(t, g, valids)
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a"),
+		nodeSet("b", "c"),
+		nodeSet("ก", "x"),
+		nodeSet("ข", "y"),
+	})
+
+	// x directly depends on c, ข
+	// x depends on [c, a, ก, ข]
+	g.Depend("x", "ข")
+	if !g.DependsOn("x", "c") {
+		t.Fatal("x directly depends on c")
+	}
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a"),
+		nodeSet("b", "c"),
+		nodeSet("ก"),
+		nodeSet("ข"),
+		nodeSet("x"),
+		nodeSet("y"),
+	})
+
+	g.Undepend("y", "x")
+	if !g.DependsOn("x", "c") {
+		t.Fatal("x directly depends on c")
+	}
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a", "y"),
+		nodeSet("b", "c"),
+		nodeSet("ก"),
+		nodeSet("ข"),
+		nodeSet("x"),
+	})
+
+	// x directly depends on c
+	// x depends on [c, a]
+	g.Undepend("x", "ข")
+	if !g.DependsOn("x", "c") {
+		t.Fatal("x directly depends on c")
+	}
+	assertMapContainsValues(t, g.Dependencies("x"), []string{"a", "c"})
+	assertLayers(t, &g, []depgraph.NodeSet[string]{
+		nodeSet("a", "y"),
+		nodeSet("b", "c"),
+		nodeSet("x", "ก"),
+		nodeSet("ข"),
+	})
 }
 
 func TestRemove(t *testing.T) {
@@ -321,6 +426,7 @@ func assertMapContainsValues[K comparable, V any](
 	for _, thing := range keys {
 		_, ok := m[thing]
 		if !ok {
+			t.Logf("map %v", m)
 			t.Fatalf("thing %v is not in map", thing)
 		}
 	}
@@ -470,4 +576,30 @@ func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes []string)
 			t.Fatalf("node %v not found", node)
 		}
 	}
+}
+
+func assertLayers(
+	t *testing.T,
+	g *depgraph.Graph[string],
+	expected []depgraph.NodeSet[string],
+) {
+	layers := g.Layers()
+	if ll, le := len(layers), len(expected); ll != le {
+		t.Log("expected\t", expected)
+		t.Log("actual\t", layers)
+		t.Fatalf("length differs - expecting %d, got %d", le, ll)
+	}
+
+	for i := range expected {
+		reflect.DeepEqual(expected[i], layers[i])
+	}
+}
+
+func nodeSet(nodes ...string) depgraph.NodeSet[string] {
+	s := make(depgraph.NodeSet[string])
+	for i := range nodes {
+		s[nodes[i]] = struct{}{}
+	}
+
+	return s
 }

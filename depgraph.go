@@ -62,8 +62,8 @@ func (g *Graph[T]) GraphDependencies() DepMap[T] { return copyMap(g.dependencies
 func (g *Graph[T]) Clone() Graph[T] {
 	return Graph[T]{
 		nodes:        copyMap(g.nodes),
-		dependencies: copyMap(g.dependencies),
-		dependents:   copyMap(g.dependents),
+		dependencies: copyDepMap(g.dependencies),
+		dependents:   copyDepMap(g.dependents),
 	}
 }
 
@@ -112,7 +112,7 @@ func (g *Graph[T]) Leaves() NodeSet[T] {
 	leaves := make(NodeSet[T])
 
 	for node := range g.nodes {
-		if g.dependencies.ContainsKey(node) {
+		if len(g.dependencies[node]) != 0 {
 			continue
 		}
 
@@ -195,6 +195,7 @@ func (g *Graph[T]) Dependents(node T) NodeSet[T] {
 func (g *Graph[T]) Layers() []NodeSet[T] {
 	var layers []NodeSet[T]
 	copied := g.Clone()
+	i := 0
 	for {
 		leaves := copied.Leaves()
 		if len(leaves) == 0 {
@@ -203,9 +204,11 @@ func (g *Graph[T]) Layers() []NodeSet[T] {
 
 		layers = append(layers, copyMap(leaves))
 
-		for node := range leaves {
-			copied.Delete(node)
+		for leaf := range leaves {
+			copied.Delete(leaf)
 		}
+
+		i++
 	}
 
 	return layers
@@ -348,6 +351,15 @@ func copyMap[K comparable, V any](m map[K]V) map[K]V {
 	return copied
 }
 
+func copyDepMap[T comparable](m DepMap[T]) DepMap[T] {
+	copied := make(DepMap[T])
+	for k, v := range m {
+		copied[k] = copyMap(v)
+	}
+
+	return copied
+}
+
 func addToDepMap[T comparable](m DepMap[T], key, node T) {
 	set := m[key]
 	if set == nil {
@@ -358,14 +370,17 @@ func addToDepMap[T comparable](m DepMap[T], key, node T) {
 	set[node] = struct{}{}
 }
 
-func removeFromDepMap[T comparable](deps DepMap[T], key, node T) {
+func removeFromDepMap[T comparable](deps DepMap[T], key, target T) {
 	nodes := deps[key]
 	if len(nodes) == 1 {
-		delete(deps, key)
-		return
+		_, ok := nodes[target]
+		if ok {
+			delete(deps, key)
+			return
+		}
 	}
 
-	delete(nodes, node)
+	delete(nodes, target)
 }
 
 func popQueue[T any](p *[]T) T {
