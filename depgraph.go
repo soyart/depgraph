@@ -405,14 +405,14 @@ func addToDep[T comparable](deps Dependency[T], key, node T) {
 
 func removeFromDep[T comparable](deps Dependency[T], key, target T) {
 	nodes := deps[key]
-	if len(nodes) == 1 {
-		if !contains(nodes, target) {
-			return
-		}
-
-		delete(deps, key)
+	if len(nodes) != 1 {
+		delete(nodes, target)
 		return
 	}
 
-	delete(nodes, target)
+	if !contains(nodes, target) {
+		return
+	}
+
+	delete(deps, key)
 }
