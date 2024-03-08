@@ -30,12 +30,6 @@ func New[T comparable]() Graph[T] {
 	}
 }
 
-func (n Nodes[T]) Contains(item T) bool {
-	_, ok := n[item]
-
-	return ok
-}
-
 func (n Nodes[T]) Slice() []T {
 	slice := make([]T, len(n))
 	i := 0
@@ -48,10 +42,12 @@ func (n Nodes[T]) Slice() []T {
 	return slice
 }
 
-func (d Dependency[T]) ContainsKey(key T) bool {
-	_, ok := d[key]
+func (n Nodes[T]) Contains(item T) bool {
+	return contains(n, item)
+}
 
-	return ok
+func (d Dependency[T]) ContainsKey(key T) bool {
+	return contains(d, key)
 }
 
 func (d Dependency[T]) Contains(key, item T) bool {
@@ -62,9 +58,7 @@ func (d Dependency[T]) Contains(key, item T) bool {
 }
 
 func (g *Graph[T]) Contains(node T) bool {
-	_, ok := g.nodes[node]
-
-	return ok
+	return contains(g.nodes, node)
 }
 
 func (g *Graph[T]) Clone() Graph[T] {
@@ -353,6 +347,34 @@ func (g *Graph[T]) AssertRelationships() {
 	}
 }
 
+func popQueue[T any](p *[]T) T {
+	var t T
+	if p == nil {
+		return t
+	}
+
+	queue := *p
+	l := len(queue)
+	if l == 0 {
+		return t
+	}
+
+	item := queue[0]
+	if l == 1 {
+		*p = []T{}
+		return item
+	}
+
+	*p = queue[1:]
+	return item
+}
+
+func contains[K comparable, V any](m map[K]V, key K) bool {
+	_, ok := m[key]
+
+	return ok
+}
+
 func copyMap[K comparable, V any](m map[K]V) map[K]V {
 	copied := make(map[K]V)
 	for k, v := range m {
@@ -384,8 +406,7 @@ func addToDep[T comparable](deps Dependency[T], key, node T) {
 func removeFromDep[T comparable](deps Dependency[T], key, target T) {
 	nodes := deps[key]
 	if len(nodes) == 1 {
-		_, ok := nodes[target]
-		if !ok {
+		if !contains(nodes, target) {
 			return
 		}
 
@@ -394,26 +415,4 @@ func removeFromDep[T comparable](deps Dependency[T], key, target T) {
 	}
 
 	delete(nodes, target)
-}
-
-func popQueue[T any](p *[]T) T {
-	var t T
-	if p == nil {
-		return t
-	}
-
-	queue := *p
-	l := len(queue)
-	if l == 0 {
-		return t
-	}
-
-	item := queue[0]
-	if l == 1 {
-		*p = []T{}
-		return item
-	}
-
-	*p = queue[1:]
-	return item
 }
