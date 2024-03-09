@@ -8,33 +8,43 @@ import (
 var (
 	ErrDependsOnSelf      = errors.New("node depends on self")
 	ErrDependentExists    = errors.New("dependent exists")
+	ErrNoSuchDependency   = errors.New("no such direct dependency")
 	ErrCircularDependency = errors.New("circular dependency")
 )
 
 type (
-	Set[T comparable]        map[T]struct{} // Set is a set of T, implemented with Go map
-	Dependency[T comparable] map[T]Set[T]   // Dependency either maps a dependent to its set of dependencies, or a dependency to its dependents
+	Set[T comparable]   map[T]struct{} // Set is a set of T nodes, implemented with Go map
+	Edges[T comparable] map[T]Set[T]   // Edges either maps a dependent node to its set of dependencies, or a dependency to its dependents
 )
 
 type Graph[T comparable] struct {
-	nodes        Set[T]        // All nodes in Graph
-	dependents   Dependency[T] // dependency -> []dependents
-	dependencies Dependency[T] // dependent  -> []dependencies
+	nodes        Set[T]   // All nodes in Graph
+	dependents   Edges[T] // dependency -> []dependents
+	dependencies Edges[T] // dependent  -> []dependencies
 }
 
 func New[T comparable]() Graph[T] {
 	return Graph[T]{
 		nodes:        make(Set[T]),
-		dependents:   make(Dependency[T]),
-		dependencies: make(Dependency[T]),
+		dependents:   make(Edges[T]),
+		dependencies: make(Edges[T]),
 	}
 }
 
-func (n Set[T]) Slice() []T {
-	slice := make([]T, len(n))
+func NodeSet[T comparable](nodes ...T) Set[T] {
+	set := make(Set[T])
+	for i := range nodes {
+		set[nodes[i]] = struct{}{}
+	}
+
+	return set
+}
+
+func (s Set[T]) Slice() []T {
+	slice := make([]T, len(s))
 	i := 0
 
-	for node := range n {
+	for node := range s {
 		slice[i] = node
 		i++
 	}
@@ -42,17 +52,17 @@ func (n Set[T]) Slice() []T {
 	return slice
 }
 
-func (n Set[T]) Contains(item T) bool {
-	return contains(n, item)
+func (s Set[T]) Contains(item T) bool {
+	return contains(s, item)
 }
 
-func (d Dependency[T]) ContainsKey(key T) bool {
-	return contains(d, key)
+func (e Edges[T]) ContainsKey(key T) bool {
+	return contains(e, key)
 }
 
-func (d Dependency[T]) Contains(key, item T) bool {
+func (e Edges[T]) Contains(key, item T) bool {
 	// Note: reading from nil maps will not panic
-	_, ok := d[key][item]
+	_, ok := e[key][item]
 
 	return ok
 }
@@ -90,11 +100,17 @@ func (g *Graph[T]) Depend(dependent, dependency T) error {
 	return nil
 }
 
-// Undepends remove dependent->dependency edges in the graph,
-// but not from the nodes, transforming dependent into a leaf.
-func (g *Graph[T]) Undepend(dependent, dependency T) {
+// Undepend removes dependent->dependency edges in g.
+// It returns ErrNoSuchDependency if the relationship is indirect.
+func (g *Graph[T]) Undepend(dependent, dependency T) error {
+	if !g.DependsOnDirectly(dependent, dependency) {
+		return ErrNoSuchDependency
+	}
+
 	removeFromDep(g.dependents, dependency, dependent)
 	removeFromDep(g.dependencies, dependent, dependency)
+
+	return nil
 }
 
 // DependsOn checks if all deep dependencies of dependent contain dependency
@@ -222,7 +238,11 @@ func (g *Graph[T]) RemoveAutoRemove(target T) {
 		current := popQueue(&queue)
 
 		for dependent := range g.dependents[current] {
-			g.Undepend(dependent, current)
+			err := g.Undepend(dependent, current)
+			if err != nil {
+				panic("bug autoremove undepend dependent->current")
+			}
+
 			queue = append(queue, dependent)
 		}
 
@@ -232,7 +252,10 @@ func (g *Graph[T]) RemoveAutoRemove(target T) {
 				panic("bug")
 			}
 
-			g.Undepend(current, dependency)
+			err := g.Undepend(current, dependency)
+			if err != nil {
+				panic("bug autoremove undepend current->dependency")
+			}
 
 			// Check if current is the only dependent node on this dependency
 			// If so, we can safely remove this dependency from the graph
@@ -254,7 +277,10 @@ func (g *Graph[T]) RemoveForce(target T) {
 		current := popQueue(&queue)
 
 		for dependent := range g.dependents[current] {
-			g.Undepend(dependent, current)
+			err := g.Undepend(dependent, current)
+			if err != nil {
+				panic("bug: remove-force undepend dependent->current")
+			}
 
 			queue = append(queue, dependent)
 		}
@@ -265,7 +291,10 @@ func (g *Graph[T]) RemoveForce(target T) {
 				panic("bug")
 			}
 
-			g.Undepend(current, dependency)
+			err := g.Undepend(current, dependency)
+			if err != nil {
+				panic("bug: remove-force undepend current->dependency")
+			}
 		}
 
 		delete(g.nodes, current)
@@ -306,10 +335,21 @@ func (g *Graph[T]) Delete(target T) {
 }
 
 func (g *Graph[T]) GraphNodes() Set[T]               { return copyMap(g.nodes) }              // Returns a copy of all nodes
-func (g *Graph[T]) GraphDependents() Dependency[T]   { return copyMap(g.dependents) }         // Returns a copy of dependent map
-func (g *Graph[T]) GraphDependencies() Dependency[T] { return copyMap(g.dependencies) }       // Returns a copy of dependency map
+func (g *Graph[T]) GraphDependents() Edges[T]        { return copyMap(g.dependents) }         // Returns a copy of dependent map
+func (g *Graph[T]) GraphDependencies() Edges[T]      { return copyMap(g.dependencies) }       // Returns a copy of dependency map
 func (g *Graph[T]) DependentsDirect(node T) Set[T]   { return copyMap(g.dependents)[node] }   // Returns a copy of direct dependents of node
 func (g *Graph[T]) DependenciesDirect(node T) Set[T] { return copyMap(g.dependencies)[node] } // Returns a copy of direct dependencies of node
+
+// Realloc allocates a new internal maps of g, and drop the old maps,
+// hopefully to reduce memory footprints from map memory leaks
+// after multiple deletion in large maps.
+//
+// This can also be done with Clone.
+func (g *Graph[T]) Realloc() {
+	g.nodes = copyMap(g.nodes)
+	g.dependents = copyDep(g.dependents)
+	g.dependencies = copyDep(g.dependencies)
+}
 
 // AssertRelationship asserts that every node has valid references in all fields.
 // Panics if invalid references are found.
@@ -383,8 +423,8 @@ func copyMap[K comparable, V any](m map[K]V) map[K]V {
 	return copied
 }
 
-func copyDep[T comparable](deps Dependency[T]) Dependency[T] {
-	copied := make(Dependency[T])
+func copyDep[T comparable](deps Edges[T]) Edges[T] {
+	copied := make(Edges[T])
 	for k, v := range deps {
 		copied[k] = copyMap(v)
 	}
@@ -392,7 +432,7 @@ func copyDep[T comparable](deps Dependency[T]) Dependency[T] {
 	return copied
 }
 
-func addToDep[T comparable](deps Dependency[T], key, node T) {
+func addToDep[T comparable](deps Edges[T], key, node T) {
 	nodes := deps[key]
 	if nodes == nil {
 		nodes = make(Set[T])
@@ -402,14 +442,14 @@ func addToDep[T comparable](deps Dependency[T], key, node T) {
 	nodes[node] = struct{}{}
 }
 
-func removeFromDep[T comparable](deps Dependency[T], key, target T) {
+func removeFromDep[T comparable](deps Edges[T], key, target T) {
 	nodes := deps[key]
-	if len(nodes) != 1 {
-		delete(nodes, target)
+	if !contains(nodes, target) {
 		return
 	}
 
-	if !contains(nodes, target) {
+	if len(nodes) != 1 {
+		delete(nodes, target)
 		return
 	}
 

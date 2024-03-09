@@ -1,18 +1,25 @@
 # depgraph
 
 depgraph is a simple, Go generic map-based dependency graph implementation.
+It supports multi-dependencies, deep dependencies, autoremove features, etc.
+
 Any `comparable` types can be used as nodes in depgraph.
-
-It uses 3 hash maps to implement dependency graphs,
-so it's not really space-efficient.
-
-To address the ever-growing memory use by Go map memory leaks,
-depgraph provides `*Graph.Clone() Graph` to create an equivalent
-graph with lower memory footprint.
-
 ## Features
 
-- Arbitary order of adding dependencies
+depgraph implementation is simple and straightforward,
+but it provides a good set of features.
+
+Features are usually implemented as methods of type `Graph[T]`.
+
+The type currently uses 3 hash maps to implement dependency graphs,
+so it's not really space-efficient for large graphs.
+
+To address the ever-growing memory use by Go map memory leaks,
+depgraph provides `Clone` and `Realloc` for consumers to create
+an equivalent graph with lower memory allocation footprint.
+
+
+- Adding valid dependencies in arbitary order
 
   Users can arbitarily adds new dependencies to graph, so long
   that new dependencies do not violate any rules (e.g. circular dependency).
@@ -27,8 +34,32 @@ graph with lower memory footprint.
     _ = g.Depend("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
     _ = g.Depend("c", "b") // Node c gets initialized to depend on node b
 
+    g.DependsOn("b", "a") // true
+    g.DependsOn("c", "a") // true, via b
+  }
+  ```
+
+- Undepend dependencies
+
+  Dependent can undepend from any of its direct dependencies.
+
+  ```go
+  func foo() {
+    // New graph with string nodes
+    g := depgraph.New[string]()
+
+    _ = g.Depend("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
+    _ = g.Depend("c", "b") // Node c gets initialized to depend on node b
+
+    g.DependsOn("b", "a") // true
+    g.DependsOn("c", "a") // true, via b
+
     // And they undepend
     g.Undepend("c", "b")
+    g.DependsOn("c", "b") // false
+    g.DependsOn("c", "a") // false
+
+    g.Undepend("c", "b") // error, no such dependency
   }
   ```
 
@@ -51,7 +82,7 @@ graph with lower memory footprint.
 
 - Auto-removal of dependencies and dependents
 
-  depgraph provides many node removal strategies:
+  depgraph provides many removal strategies:
 
   1. `Remove` (standard)
 
@@ -62,12 +93,12 @@ graph with lower memory footprint.
       var err error
 
       g := depgraph.New[string]()
-      err = g.Depend("b", "a")
-      err = g.Depend("c", "b")
-      err = g.Depend("d", "c")
+      _ =  g.Depend("b", "a")
+      _ =  g.Depend("c", "b")
+      _ =  g.Depend("d", "c")
 
-      err = g.Remove("d") // ok: d has 0 dependents
-      err = g.Remove("c") // ok: c now has 0 dependents (d was just removed)
+      _ =  g.Remove("d") // ok: d has 0 dependents
+      _ =  g.Remove("c") // ok: c now has 0 dependents (d was just removed)
 
       err = g.Remove("a") // error! 'a' still has dependent 'b'
     }
@@ -112,7 +143,7 @@ graph with lower memory footprint.
 - Topological sort order in layers
 
   Discover dependencies in layers (nodes in earlier layer will not
-  depend on any nodes that appear in later layer):
+  depend on any nodes that appear in subsequent layer):
 
   ```go
   func foo() {
@@ -121,9 +152,15 @@ graph with lower memory footprint.
     _ = g.Depend("b", "a")
     _ = g.Depend("c", "b")
     _ = g.Depend("d", "c")
-    g.Layers() // [["a"], ["b", "x"], ["c"], ["d"]]
+    g.Layers() // [["a"], ["b"], ["c"], ["d"]]
     
     _ = g.Depend("x", "0")
     g.Layers() // [["0", "a"], ["b", "x"], ["c"], ["d"]]
+
+    _ = g.Undepend("b", "a")
+    g.Layers() // [["0", "a", "b"], ["x"], ["c"], ["d"]]
+
+    _ = g.Depend("b", "c")
+    g.Layers() // [["0", "a"], ["x"], ["c"], ["b", "d"]]
   }
   ```
