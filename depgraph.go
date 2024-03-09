@@ -17,9 +17,9 @@ type (
 )
 
 type Graph[T comparable] struct {
-	nodes        Set[T]        // All nodes in a set
-	dependents   Dependency[T] // parent -> []child
-	dependencies Dependency[T] // child  -> []parent
+	nodes        Set[T]        // All nodes in Graph
+	dependents   Dependency[T] // dependency -> []dependents
+	dependencies Dependency[T] // dependent  -> []dependencies
 }
 
 func New[T comparable]() Graph[T] {
