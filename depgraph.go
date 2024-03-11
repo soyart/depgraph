@@ -147,7 +147,7 @@ func (g *Graph[T]) Leaves() Set[T] {
 
 // Dependencies returns all deep dependencies
 func (g *Graph[T]) Dependencies(node T) Set[T] {
-	if _, found := g.nodes[node]; !found {
+	if !g.nodes.Contains(node) {
 		return nil
 	}
 
@@ -181,7 +181,7 @@ func (g *Graph[T]) Dependencies(node T) Set[T] {
 
 // Dependencies returns all deep dependencies
 func (g *Graph[T]) Dependents(node T) Set[T] {
-	if _, found := g.nodes[node]; !found {
+	if !g.nodes.Contains(node) {
 		return nil
 	}
 
