@@ -48,8 +48,9 @@ an equivalent graph with lower memory allocation footprint.
     g.DependsOn("b", "a") // true
     g.DependsOn("c", "a") // true, via b
 
-    // And they undepend
-    g.Undepend("c", "b")
+    g.Undepend("c", "a") // error, no direct dependency c->a
+    g.Undepend("c", "b") // ok, c is now independent
+
     g.DependsOn("c", "b") // false
     g.DependsOn("c", "a") // false
 
