@@ -71,6 +71,12 @@ func (g *Graph[T]) Contains(node T) bool {
 	return contains(g.nodes, node)
 }
 
+func (g *Graph[T]) GraphNodes() Set[T]               { return copyMap(g.nodes) }              // Returns a copy of all nodes
+func (g *Graph[T]) GraphDependents() Edges[T]        { return copyMap(g.dependents) }         // Returns a copy of dependent map
+func (g *Graph[T]) GraphDependencies() Edges[T]      { return copyMap(g.dependencies) }       // Returns a copy of dependency map
+func (g *Graph[T]) DependentsDirect(node T) Set[T]   { return copyMap(g.dependents)[node] }   // Returns a copy of direct dependents of node
+func (g *Graph[T]) DependenciesDirect(node T) Set[T] { return copyMap(g.dependencies)[node] } // Returns a copy of direct dependencies of node
+
 func (g *Graph[T]) Clone() Graph[T] {
 	return Graph[T]{
 		nodes:        copyMap(g.nodes),
@@ -86,7 +92,6 @@ func (g *Graph[T]) Depend(dependent, dependency T) error {
 		return ErrDependsOnSelf
 	}
 
-	// Parent already depends on child
 	if g.DependsOn(dependency, dependent) {
 		return ErrCircularDependency
 	}
@@ -230,7 +235,7 @@ func (g *Graph[T]) Layers() []Set[T] {
 }
 
 // RemoveAutoRemove removes target node as well as its dependents and dependencies,
-// like with APT or Homebrew autoremove command.
+// like with pacman -Rns, or APT autoremove commands.
 func (g *Graph[T]) RemoveAutoRemove(target T) {
 	queue := []T{target}
 
@@ -320,25 +325,17 @@ func (g *Graph[T]) Delete(target T) {
 	for dependency := range g.dependencies[target] {
 		removeFromDep(g.dependents, dependency, target)
 	}
-
 	delete(g.dependencies, target)
 
 	// Delete all edges to dependents
 	for dependent := range g.dependents[target] {
 		removeFromDep(g.dependencies, dependent, target)
 	}
-
 	delete(g.dependents, target)
 
-	// Delete node from nodes
+	// Delete target from nodes
 	delete(g.nodes, target)
 }
-
-func (g *Graph[T]) GraphNodes() Set[T]               { return copyMap(g.nodes) }              // Returns a copy of all nodes
-func (g *Graph[T]) GraphDependents() Edges[T]        { return copyMap(g.dependents) }         // Returns a copy of dependent map
-func (g *Graph[T]) GraphDependencies() Edges[T]      { return copyMap(g.dependencies) }       // Returns a copy of dependency map
-func (g *Graph[T]) DependentsDirect(node T) Set[T]   { return copyMap(g.dependents)[node] }   // Returns a copy of direct dependents of node
-func (g *Graph[T]) DependenciesDirect(node T) Set[T] { return copyMap(g.dependencies)[node] } // Returns a copy of direct dependencies of node
 
 // Realloc allocates a new internal maps of g, and drop the old maps,
 // hopefully to reduce memory footprints from map memory leaks
@@ -352,7 +349,7 @@ func (g *Graph[T]) Realloc() {
 }
 
 // AssertRelationship asserts that every node has valid references in all fields.
-// Panics if invalid references are found.
+// Panics if invalid references are found. Currently only used in tests.
 func (g *Graph[T]) AssertRelationships() {
 	for dependency := range g.dependents {
 		if !g.nodes.Contains(dependency) {

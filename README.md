@@ -4,22 +4,18 @@ depgraph is a simple, Go generic map-based dependency graph implementation.
 It supports multi-dependencies, deep dependencies, autoremove features, etc.
 
 Any `comparable` types can be used as nodes in depgraph.
-## Features
 
-depgraph implementation is simple and straightforward,
-but it provides a good set of features.
+## Features
 
 Features are usually implemented as methods of type `Graph[T]`.
 
-The type currently uses 3 hash maps to implement dependency graphs,
-so it's not really space-efficient for large graphs.
+The type currently uses 3 hash maps to implement dependency graphs.
 
 To address the ever-growing memory use by Go map memory leaks,
 depgraph provides `Clone` and `Realloc` for consumers to create
 an equivalent graph with lower memory allocation footprint.
 
-
-- Adding valid dependencies in arbitary order
+- Depend or undepend arbitarily
 
   Users can arbitarily adds new dependencies to graph, so long
   that new dependencies do not violate any rules (e.g. circular dependency).
@@ -39,9 +35,7 @@ an equivalent graph with lower memory allocation footprint.
   }
   ```
 
-- Undepend dependencies
-
-  Dependent can undepend from any of its direct dependencies.
+  Dependent can undepend from any of its *direct* dependencies.
 
   ```go
   func foo() {
@@ -62,8 +56,6 @@ an equivalent graph with lower memory allocation footprint.
     g.Undepend("c", "b") // error, no such dependency
   }
   ```
-
-- Prevents circular dependencies, and self-dependent nodes
 
   Any circular dependencies, deep or direct, are prevented on insertion:
 
