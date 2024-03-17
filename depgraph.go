@@ -147,61 +147,36 @@ func (g *Graph[T]) Leaves() Set[T] {
 
 // Dependencies returns all deep dependencies
 func (g *Graph[T]) Dependencies(node T) Set[T] {
-	if !g.nodes.Contains(node) {
-		return nil
-	}
-
-	dependencies := make(Set[T])
-	searchNext := []T{node}
-
-	for len(searchNext) != 0 {
-		var discovered []T
-
-		for _, next := range searchNext {
-			deps, ok := g.dependencies[next]
-			if !ok {
-				continue
-			}
-
-			for dep := range deps {
-				if dependencies.Contains(dep) {
-					continue
-				}
-
-				dependencies[dep] = struct{}{}
-				discovered = append(discovered, dep)
-			}
-		}
-
-		searchNext = discovered
-	}
-
-	return dependencies
+	return g.digDeep(g.dependencies, node)
 }
 
 // Dependencies returns all deep dependencies
 func (g *Graph[T]) Dependents(node T) Set[T] {
+	return g.digDeep(g.dependents, node)
+}
+
+func (g *Graph[T]) digDeep(edges Edges[T], node T) Set[T] {
 	if !g.nodes.Contains(node) {
 		return nil
 	}
 
-	dependents := make(Set[T])
+	results := make(Set[T])
 	searchNext := []T{node}
 
 	for len(searchNext) != 0 {
 		var discovered []T
 		for _, next := range searchNext {
-			deps, ok := g.dependents[next]
+			deps, ok := edges[next]
 			if !ok {
 				continue
 			}
 
 			for dep := range deps {
-				if dependents.Contains(dep) {
+				if results.Contains(dep) {
 					continue
 				}
 
-				dependents[dep] = struct{}{}
+				results[dep] = struct{}{}
 				discovered = append(discovered, dep)
 			}
 		}
@@ -209,7 +184,7 @@ func (g *Graph[T]) Dependents(node T) Set[T] {
 		searchNext = discovered
 	}
 
-	return dependents
+	return results
 }
 
 // Layers returns nodes in topological sort order.
