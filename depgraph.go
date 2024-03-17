@@ -218,11 +218,9 @@ func (g *Graph[T]) Dependents(node T) Set[T] {
 func (g *Graph[T]) Layers() []Set[T] {
 	var layers []Set[T]
 	copied := g.Clone()
-	for {
+
+	for len(copied.nodes) != 0 {
 		leaves := copied.Leaves()
-		if len(leaves) == 0 {
-			break
-		}
 
 		for leaf := range leaves {
 			copied.Delete(leaf)
