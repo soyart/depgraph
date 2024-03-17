@@ -1,4 +1,4 @@
-package depgraph
+package soydepend
 
 import (
 	"errors"

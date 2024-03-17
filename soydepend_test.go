@@ -1,14 +1,14 @@
-package depgraph_test
+package soydepend_test
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/soyart/depgraph"
+	"github.com/soyart/soydepend-go"
 )
 
-func initTestGraph(t *testing.T) depgraph.Graph[string] {
+func initTestGraph(t *testing.T) soydepend.Graph[string] {
 	valids := map[string][]string{
 		// b -> a
 		// c -> a, b
@@ -21,12 +21,12 @@ func initTestGraph(t *testing.T) depgraph.Graph[string] {
 		"1": {"0"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 	g.AssertRelationships()
 
 	{
-		// Test if nil maps crash depgraph
+		// Test if nil maps crash soydepend
 		_ = g.DependsOn("0", "1")
 		_ = g.Contains("2")
 	}
@@ -46,7 +46,7 @@ func TestAddDependencies(t *testing.T) {
 		"y": {"x", "b"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 	g.AssertRelationships()
 
@@ -68,7 +68,7 @@ func TestDependencies(t *testing.T) {
 		"y": {"x"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 	g.AssertRelationships()
 
@@ -97,7 +97,7 @@ func TestDependents(t *testing.T) {
 		"1": {"0"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 
 	deps := g.Dependents("1")
@@ -125,13 +125,13 @@ func TestUndepend(t *testing.T) {
 		"1": {"0"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 
 	testUndependToLeaf(t, &g, "b", "a")
 	testUndependToLeaf(t, &g, "y", "x")
 
-	g = depgraph.New[string]()
+	g = soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 	var err error
 
@@ -154,7 +154,7 @@ func TestUndepend(t *testing.T) {
 	}
 }
 
-func testUndependToLeaf(t *testing.T, g *depgraph.Graph[string], dependent, dependency string) {
+func testUndependToLeaf(t *testing.T, g *soydepend.Graph[string], dependent, dependency string) {
 	g.Undepend(dependent, dependency)
 	if g.DependsOn(dependent, dependency) {
 		t.Fatalf("%v should not depend on %v after undepend", dependent, dependency)
@@ -186,39 +186,39 @@ func TestLayersSimple(t *testing.T) {
 		"1": {"0"},
 	}
 
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "0"),
-		depgraph.NodeSet("1", "b", "c"),
-		depgraph.NodeSet("x"),
-		depgraph.NodeSet("y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "0"),
+		soydepend.NodeSet("1", "b", "c"),
+		soydepend.NodeSet("x"),
+		soydepend.NodeSet("y"),
 	})
 
 	g.Undepend("b", "a")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "b", "0"),
-		depgraph.NodeSet("1", "c"),
-		depgraph.NodeSet("x"),
-		depgraph.NodeSet("y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "b", "0"),
+		soydepend.NodeSet("1", "c"),
+		soydepend.NodeSet("x"),
+		soydepend.NodeSet("y"),
 	})
 
 	g.Undepend("c", "a")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "b", "c", "0"),
-		depgraph.NodeSet("1", "x"),
-		depgraph.NodeSet("y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "b", "c", "0"),
+		soydepend.NodeSet("1", "x"),
+		soydepend.NodeSet("y"),
 	})
 
 	g.Depend("a", "c")
 	g.AssertRelationships()
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("b", "c", "0"),
-		depgraph.NodeSet("a", "1", "x"),
-		depgraph.NodeSet("y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("b", "c", "0"),
+		soydepend.NodeSet("a", "1", "x"),
+		soydepend.NodeSet("y"),
 	})
 }
 
@@ -235,13 +235,13 @@ func TestLayersComplex(t *testing.T) {
 
 	// x directly depends on c
 	// x depends on [c, a]
-	g := depgraph.New[string]()
+	g := soydepend.New[string]()
 	addValidDependencies(t, g, valids)
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("0", "x"),
-		depgraph.NodeSet("1", "y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("0", "x"),
+		soydepend.NodeSet("1", "y"),
 	})
 
 	// x directly depends on c, 1
@@ -251,13 +251,13 @@ func TestLayersComplex(t *testing.T) {
 	if !g.DependsOn("x", "c") {
 		t.Fatal("x directly depends on c")
 	}
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("0"),
-		depgraph.NodeSet("1"),
-		depgraph.NodeSet("x"),
-		depgraph.NodeSet("y"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("0"),
+		soydepend.NodeSet("1"),
+		soydepend.NodeSet("x"),
+		soydepend.NodeSet("y"),
 	})
 
 	g.Undepend("y", "x")
@@ -265,12 +265,12 @@ func TestLayersComplex(t *testing.T) {
 	if !g.DependsOn("x", "c") {
 		t.Fatal("x directly depends on c")
 	}
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "y"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("0"),
-		depgraph.NodeSet("1"),
-		depgraph.NodeSet("x"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "y"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("0"),
+		soydepend.NodeSet("1"),
+		soydepend.NodeSet("x"),
 	})
 
 	// x directly depends on c
@@ -281,11 +281,11 @@ func TestLayersComplex(t *testing.T) {
 		t.Fatal("x directly depends on c")
 	}
 	assertMapContainsValues(t, g.Dependencies("x"), []string{"a", "c"})
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "y"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("x", "0"),
-		depgraph.NodeSet("1"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "y"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("x", "0"),
+		soydepend.NodeSet("1"),
 	})
 
 	// x will directly depend on a, c
@@ -294,11 +294,11 @@ func TestLayersComplex(t *testing.T) {
 	g.Depend("x", "a")
 	g.Undepend("x", "a")
 	g.Depend("x", "a")
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "y"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("x", "0"),
-		depgraph.NodeSet("1"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "y"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("x", "0"),
+		soydepend.NodeSet("1"),
 	})
 
 	// x will be a leaf
@@ -307,20 +307,20 @@ func TestLayersComplex(t *testing.T) {
 	g.Undepend("x", "c")
 	g.Depend("x", "b")   // dummy depend
 	g.Undepend("x", "b") // dummy undepend
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "x", "y"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("0"),
-		depgraph.NodeSet("1"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "x", "y"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("0"),
+		soydepend.NodeSet("1"),
 	})
 
 	g.Depend("y", "0")
 	g.Realloc() // random realloc test
-	assertLayers(t, &g, []depgraph.Set[string]{
-		depgraph.NodeSet("a", "x"),
-		depgraph.NodeSet("b", "c"),
-		depgraph.NodeSet("0"),
-		depgraph.NodeSet("y", "1"),
+	assertLayers(t, &g, []soydepend.Set[string]{
+		soydepend.NodeSet("a", "x"),
+		soydepend.NodeSet("b", "c"),
+		soydepend.NodeSet("0"),
+		soydepend.NodeSet("y", "1"),
 	})
 }
 
@@ -330,7 +330,7 @@ func TestRemove(t *testing.T) {
 
 	err = g.Remove("y")
 	g.AssertRelationships()
-	assertNotContains(t, g, depgraph.NodeSet("y"))
+	assertNotContains(t, g, soydepend.NodeSet("y"))
 	if err != nil {
 		t.Log("after-remove", "y", g)
 		t.Fatal("unexpected error:", err)
@@ -338,7 +338,7 @@ func TestRemove(t *testing.T) {
 
 	err = g.Remove("x")
 	g.AssertRelationships()
-	assertNotContains(t, g, depgraph.NodeSet("x"))
+	assertNotContains(t, g, soydepend.NodeSet("x"))
 	if err != nil {
 		t.Log("after-remove", "x", g)
 		t.Fatal("unexpected error:", err)
@@ -347,7 +347,7 @@ func TestRemove(t *testing.T) {
 	g.Realloc() // random realloc test
 	err = g.Remove("1")
 	g.AssertRelationships()
-	assertNotContains(t, g, depgraph.NodeSet("1"))
+	assertNotContains(t, g, soydepend.NodeSet("1"))
 	if err != nil {
 		t.Log("after-remove", "1", g)
 		t.Fatal("unexpected error:", err)
@@ -355,7 +355,7 @@ func TestRemove(t *testing.T) {
 
 	err = g.Remove("0")
 	g.AssertRelationships()
-	assertNotContains(t, g, depgraph.NodeSet("0"))
+	assertNotContains(t, g, soydepend.NodeSet("0"))
 	if err != nil {
 		t.Log("after-remove", "0", g)
 		t.Fatal("unexpected error:", err)
@@ -376,30 +376,30 @@ func TestRemoveForce(t *testing.T) {
 	// leaving only x, y, 0, 1
 	g.RemoveForce("a")
 	g.AssertRelationships()
-	assertNotContains(t, g, depgraph.NodeSet("a", "b", "c", "d"))
-	assertContainsAll(t, g, depgraph.NodeSet("x", "y", "0", "1"))
+	assertNotContains(t, g, soydepend.NodeSet("a", "b", "c", "d"))
+	assertContainsAll(t, g, soydepend.NodeSet("x", "y", "0", "1"))
 }
 
 func TestRemoveAutoRemove(t *testing.T) {
 	type testCaseDefaultGraphs struct {
-		removes        depgraph.Set[string]
-		nodesRemaining depgraph.Set[string]
+		removes        soydepend.Set[string]
+		nodesRemaining soydepend.Set[string]
 		willBeEmpty    bool
 	}
 
 	tests := []testCaseDefaultGraphs{
 		{
-			removes:        depgraph.NodeSet("d"),
+			removes:        soydepend.NodeSet("d"),
 			willBeEmpty:    false,
-			nodesRemaining: depgraph.NodeSet("a", "b", "x", "y", "0", "1"),
+			nodesRemaining: soydepend.NodeSet("a", "b", "x", "y", "0", "1"),
 		},
 		{
-			removes:        depgraph.NodeSet("a", "x"),
+			removes:        soydepend.NodeSet("a", "x"),
 			willBeEmpty:    false,
-			nodesRemaining: depgraph.NodeSet("0", "1"),
+			nodesRemaining: soydepend.NodeSet("0", "1"),
 		},
 		{
-			removes:     depgraph.NodeSet("a", "x", "1"),
+			removes:     soydepend.NodeSet("a", "x", "1"),
 			willBeEmpty: true,
 		},
 	}
@@ -425,7 +425,7 @@ func TestDelete(t *testing.T) {
 	for _, node := range []string{"y", "a", "x", "c"} {
 		g.Delete(node)
 		g.AssertRelationships()
-		assertNotContains(t, g, depgraph.NodeSet(node))
+		assertNotContains(t, g, soydepend.NodeSet(node))
 	}
 }
 
@@ -433,7 +433,7 @@ func TestAutoRemoveLeaves(t *testing.T) {
 	testAutoRemoveLeaves(t, initTestGraph(t))
 }
 
-func testAutoRemoveNg(t *testing.T, g depgraph.Graph[string], toRemoves depgraph.Set[string]) {
+func testAutoRemoveNg(t *testing.T, g soydepend.Graph[string], toRemoves soydepend.Set[string]) {
 	t.Log("testAutoRemove-before", g, "removes", toRemoves)
 	for rm := range toRemoves {
 		g.RemoveAutoRemove(rm)
@@ -443,7 +443,7 @@ func testAutoRemoveNg(t *testing.T, g depgraph.Graph[string], toRemoves depgraph
 	t.Log("testAutoRemove-after", g)
 }
 
-func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph[string]) {
+func testAutoRemoveLeaves(t *testing.T, g soydepend.Graph[string]) {
 	for leaf := range g.Leaves() {
 		g.RemoveAutoRemove(leaf)
 		g.AssertRelationships()
@@ -452,7 +452,7 @@ func testAutoRemoveLeaves(t *testing.T, g depgraph.Graph[string]) {
 	assertEmptyGraph(t, g)
 }
 
-func TestDebugDepGraph(t *testing.T) {
+func TestDebugsoydepend(t *testing.T) {
 	g := initTestGraph(t)
 	t.Log("DebugTest: Leaves=", g.Leaves())
 	t.Logf("DebugTest: Graph=%+v", g)
@@ -476,7 +476,7 @@ func TestDebugDepGraph(t *testing.T) {
 	}
 }
 
-func addValidDependencies(t *testing.T, g depgraph.Graph[string], valids map[string][]string) {
+func addValidDependencies(t *testing.T, g soydepend.Graph[string], valids map[string][]string) {
 	for dependent, dependencies := range valids {
 		for _, dependency := range dependencies {
 			err := g.Depend(dependent, dependency)
@@ -515,7 +515,7 @@ func assertMapContainsValues[K comparable, V any](
 	}
 }
 
-func assertEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
+func assertEmptyGraph(t *testing.T, g soydepend.Graph[string]) {
 	if len(g.GraphNodes()) != 0 {
 		t.Fatalf("graph not empty after all leaves removed: nodes=%v", g.GraphNodes())
 	}
@@ -529,7 +529,7 @@ func assertEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
 	}
 }
 
-func assertNotEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
+func assertNotEmptyGraph(t *testing.T, g soydepend.Graph[string]) {
 	if len(g.GraphNodes()) == 0 {
 		t.Fatalf("graph not empty after all leaves removed: nodes=%v", g.GraphNodes())
 	}
@@ -543,7 +543,7 @@ func assertNotEmptyGraph(t *testing.T, g depgraph.Graph[string]) {
 	}
 }
 
-func assertNotContains(t *testing.T, g depgraph.Graph[string], nodes depgraph.Set[string]) {
+func assertNotContains(t *testing.T, g soydepend.Graph[string], nodes soydepend.Set[string]) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
@@ -579,7 +579,7 @@ func assertNotContains(t *testing.T, g depgraph.Graph[string], nodes depgraph.Se
 	}
 }
 
-func assertContainsAll(t *testing.T, g depgraph.Graph[string], nodes depgraph.Set[string]) {
+func assertContainsAll(t *testing.T, g soydepend.Graph[string], nodes soydepend.Set[string]) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
@@ -609,7 +609,7 @@ func assertContainsAll(t *testing.T, g depgraph.Graph[string], nodes depgraph.Se
 	}
 }
 
-func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes depgraph.Set[string]) {
+func assertRemainingNode(t *testing.T, g soydepend.Graph[string], nodes soydepend.Set[string]) {
 	if len(nodes) == 0 {
 		t.Fatal("remainingNodes is null")
 	}
@@ -663,8 +663,8 @@ func assertRemainingNode(t *testing.T, g depgraph.Graph[string], nodes depgraph.
 
 func assertLayers(
 	t *testing.T,
-	g *depgraph.Graph[string],
-	expecteds []depgraph.Set[string],
+	g *soydepend.Graph[string],
+	expecteds []soydepend.Set[string],
 ) {
 	layers := g.Layers()
 	if ll, le := len(layers), len(expecteds); ll != le {

@@ -1,9 +1,9 @@
-# depgraph
+# soydepend-go
 
-depgraph is a simple, Go generic map-based dependency graph implementation.
+soydepend is a simple, Go generic map-based dependency graph implementation.
 It supports multi-dependencies, deep dependencies, autoremove features, etc.
 
-Any `comparable` types can be used as nodes in depgraph.
+Any `comparable` types can be used as nodes in soydepend.
 
 ## Features
 
@@ -12,7 +12,7 @@ Features are usually implemented as methods of type `Graph[T]`.
 The type currently uses 3 hash maps to implement dependency graphs.
 
 To address the ever-growing memory use by Go map memory leaks,
-depgraph provides `Clone` and `Realloc` for consumers to create
+soydepend provides `Clone` and `Realloc` for consumers to create
 an equivalent graph with lower memory allocation footprint.
 
 - Depend or undepend arbitarily
@@ -25,7 +25,7 @@ an equivalent graph with lower memory allocation footprint.
   ```go
   func foo() {
     // New graph with string nodes
-    g := depgraph.New[string]()
+    g := soydepend.New[string]()
 
     _ = g.Depend("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
     _ = g.Depend("c", "b") // Node c gets initialized to depend on node b
@@ -40,7 +40,7 @@ an equivalent graph with lower memory allocation footprint.
   ```go
   func foo() {
     // New graph with string nodes
-    g := depgraph.New[string]()
+    g := soydepend.New[string]()
 
     _ = g.Depend("b", "a") // Nodes b and a are both initialized as it's inserted (b depends on a)
     _ = g.Depend("c", "b") // Node c gets initialized to depend on node b
@@ -64,7 +64,7 @@ an equivalent graph with lower memory allocation footprint.
   func foo() {
     var err error
 
-    g := depgraph.New[string]()
+    g := soydepend.New[string]()
     err = g.Depend("b", "a") // ok: b -> a
     err = g.Depend("c", "b") // ok: c -> b
     err = g.Depend("d", "c") // ok: d -> c
@@ -75,7 +75,7 @@ an equivalent graph with lower memory allocation footprint.
 
 - Auto-removal of dependencies and dependents
 
-  depgraph provides many removal strategies:
+  soydepend provides many removal strategies:
 
   1. `Remove` (standard)
 
@@ -85,7 +85,7 @@ an equivalent graph with lower memory allocation footprint.
     func foo() {
       var err error
 
-      g := depgraph.New[string]()
+      g := soydepend.New[string]()
       _ =  g.Depend("b", "a")
       _ =  g.Depend("c", "b")
       _ =  g.Depend("d", "c")
@@ -103,7 +103,7 @@ an equivalent graph with lower memory allocation footprint.
 
     ```go
     func foo() {
-      g := depgraph.New[string]()
+      g := soydepend.New[string]()
 
       _ = g.Depend("b", "a")
       _ = g.Depend("c", "b")
@@ -121,7 +121,7 @@ an equivalent graph with lower memory allocation footprint.
 
     ```go
     func foo() {
-      g := depgraph.New[string]()
+      g := soydepend.New[string]()
 
       _ = g.Depend("b", "a")
       _ = g.Depend("c", "b")
@@ -140,7 +140,7 @@ an equivalent graph with lower memory allocation footprint.
 
   ```go
   func foo() {
-    g := depgraph.New[string]()
+    g := soydepend.New[string]()
 
     _ = g.Depend("b", "a")
     _ = g.Depend("c", "b")
