@@ -166,18 +166,18 @@ func (g *Graph[T]) digDeep(edges Edges[T], node T) Set[T] {
 	for len(searchNext) != 0 {
 		var discovered []T
 		for _, next := range searchNext {
-			deps, ok := edges[next]
+			edgeNodes, ok := edges[next]
 			if !ok {
 				continue
 			}
 
-			for dep := range deps {
-				if results.Contains(dep) {
+			for edgeNode := range edgeNodes {
+				if results.Contains(edgeNode) {
 					continue
 				}
 
-				results[dep] = struct{}{}
-				discovered = append(discovered, dep)
+				results[edgeNode] = struct{}{}
+				discovered = append(discovered, edgeNode)
 			}
 		}
 
@@ -298,16 +298,15 @@ func (g *Graph[T]) Delete(target T) {
 	for dependency := range g.dependencies[target] {
 		removeFromDep(g.dependents, dependency, target)
 	}
-	delete(g.dependencies, target)
 
 	// Delete all edges to dependents
 	for dependent := range g.dependents[target] {
 		removeFromDep(g.dependencies, dependent, target)
 	}
-	delete(g.dependents, target)
 
-	// Delete target from nodes
 	delete(g.nodes, target)
+	delete(g.dependents, target)
+	delete(g.dependencies, target)
 }
 
 // Realloc allocates a new internal maps of g, and drop the old maps,
