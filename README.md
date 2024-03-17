@@ -1,5 +1,8 @@
 # soydepend-go
 
+> See [soydepend-rs](https://github.com/soyart/soydepend-rs)
+> for Rust implementation
+
 soydepend is a simple, Go generic map-based dependency graph implementation.
 It supports multi-dependencies, deep dependencies, autoremove features, etc.
 
